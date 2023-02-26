@@ -109,7 +109,7 @@ export class Client {
 
     async startGame(game: string) {
         console.log("Creating game", game);
-        const result = await fetch(`${baseUrl}/game/${game}`, { mode: "cors", method: "PUT" });
+        const result = await fetch(`${baseUrl}/game/${game}`, { mode: "cors", method: "POST" });
         return await result.text()
     }
 

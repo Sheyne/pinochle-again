@@ -28,6 +28,17 @@ async fn get_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Re
     }
 }
 
+#[get("/game/{game}/full")]
+async fn get_full_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+    let games = data.games.lock().unwrap();
+    let name = game.into_inner();
+    if let Some(game) = games.get(&name) {
+        HttpResponse::Ok().json(game)
+    } else {
+        HttpResponse::NotFound().body("")
+    }
+}
+
 #[get("/game/{game}/hand/{player}")]
 async fn get_hand(game: web::Path<(String, Player)>, data: web::Data<AppState>) -> impl Responder {
     let games = data.games.lock().unwrap();
@@ -69,11 +80,25 @@ async fn act(
     }
 }
 
-#[put("/game/{game}")]
-async fn create(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+fn create(game: web::Path<String>, info: Game, data: web::Data<AppState>) {
     let mut games = data.games.lock().unwrap();
     let name = game.into_inner();
-    games.insert(name, Game::default());
+    games.insert(name, info);
+}
+
+#[put("/game/{game}")]
+async fn create_with(
+    game: web::Path<String>,
+    info: web::Json<Game>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    create(game, info.into_inner(), data);
+    HttpResponse::Ok()
+}
+
+#[post("/game/{game}")]
+async fn create_without(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+    create(game, Game::default(), data);
     HttpResponse::Ok()
 }
 
@@ -92,10 +117,12 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(shared.clone())
             .service(act)
+            .service(get_full_game)
             .service(get_game)
             .service(get_games)
             .service(get_hand)
-            .service(create)
+            .service(create_without)
+            .service(create_with)
             .service(actix_files::Files::new("/", "./www/build").index_file("index.html"))
     })
     .bind(("0.0.0.0", 8080))?
