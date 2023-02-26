@@ -1,0 +1,28 @@
+# flyctl launch added from .gitignore
+target
+
+# flyctl launch added from www/.gitignore
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+www/node_modules
+www/.pnp
+www/**/.pnp.js
+
+# testing
+www/coverage
+
+# production
+www/build
+
+# misc
+www/**/.DS_Store
+www/**/.env.local
+www/**/.env.development.local
+www/**/.env.test.local
+www/**/.env.production.local
+
+www/**/npm-debug.log*
+www/**/yarn-debug.log*
+www/**/yarn-error.log*
+fly.toml
