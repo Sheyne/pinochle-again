@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import './App.css';
 import Controls from "./Controls";
 import Hand from "./Hand"
-import { Card, GameInfo, Client, Player, selectionMax, Phase } from "./model";
+import { Card, GameInfo, Client, selectionMax, Phase } from "./model";
 
 
 const client = new Client();

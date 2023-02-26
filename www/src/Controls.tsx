@@ -79,7 +79,6 @@ function Controls(props: {
         }
     }
 
-    const key = Object.keys(props.gameInfo.phase) as (keyof GameInfo['phase'])[]
     return Object.entries(props.gameInfo.phase).map(([a, b]) => {
         const phase = a as keyof Phase;
         return subElements[phase](b as any);

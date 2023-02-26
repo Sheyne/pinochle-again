@@ -296,17 +296,39 @@ impl RoundState {
                     trump: suit,
                 }
             }
-            (Phase::PassingBack { .. } | Phase::PassingTo { .. }, Action::Pass(indices)) => {
-                let indices: BTreeSet<_> = indices.into_iter().collect();
-                if indices.len() != 4 {
-                    return Err(Error::PassingWrongNumberOfCards);
-                } else {
-                    let taken_cards =
-                        take_indices(&mut self.hands[self.current_player as usize], indices)?;
-                    self.hands[partner(self.current_player) as usize].extend(taken_cards);
-                    self.current_player = partner(self.current_player);
-                    self.phase = self.phase.next();
-                }
+            (
+                Phase::PassingTo {
+                    trump,
+                    bid_winner,
+                    highest_bid,
+                },
+                Action::Pass(indices),
+            ) => {
+                Self::pass_cards(&mut self.hands, self.current_player, indices)?;
+                self.current_player = *bid_winner;
+                self.phase = Phase::PassingBack {
+                    trump: *trump,
+                    bid_winner: *bid_winner,
+                    highest_bid: *highest_bid,
+                };
+            }
+            (
+                Phase::PassingBack {
+                    trump,
+                    bid_winner,
+                    highest_bid,
+                },
+                Action::Pass(indices),
+            ) => {
+                Self::pass_cards(&mut self.hands, self.current_player, indices)?;
+                self.current_player = *bid_winner;
+                self.phase = Phase::RevealingCards {
+                    extra_points: [0, 0],
+                    reveals: 0,
+                    trump: *trump,
+                    highest_bid: *highest_bid,
+                    bid_winner: *bid_winner,
+                };
             }
             (
                 Phase::RevealingCards {
@@ -411,6 +433,20 @@ impl RoundState {
         }
         Ok(None)
     }
+
+    fn pass_cards(
+        hands: &mut [Vec<Card>; 4],
+        current_player: Player,
+        indices: Vec<usize>,
+    ) -> Result<(), Error> {
+        let indices: BTreeSet<_> = indices.into_iter().collect();
+        if indices.len() != 4 {
+            return Err(Error::PassingWrongNumberOfCards);
+        }
+        let taken_cards = take_indices(&mut hands[current_player as usize], indices)?;
+        hands[partner(current_player) as usize].extend(taken_cards);
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Sequence, Deserialize, Serialize)]
@@ -476,37 +512,6 @@ enum Phase {
         piles: [Vec<Card>; 2],
         trick: Trick,
     },
-}
-
-impl Phase {
-    fn next(&self) -> Phase {
-        match self {
-            Phase::Bidding { .. } => panic!(),
-            Phase::DeclareTrump { .. } => panic!(),
-            Phase::RevealingCards { .. } => panic!(),
-            Phase::PassingTo {
-                trump,
-                bid_winner,
-                highest_bid,
-            } => Phase::PassingBack {
-                trump: *trump,
-                bid_winner: *bid_winner,
-                highest_bid: *highest_bid,
-            },
-            Phase::PassingBack {
-                trump,
-                bid_winner,
-                highest_bid,
-            } => Phase::RevealingCards {
-                extra_points: [0, 0],
-                reveals: 0,
-                trump: *trump,
-                highest_bid: *highest_bid,
-                bid_winner: *bid_winner,
-            },
-            Phase::Play { .. } => panic!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
