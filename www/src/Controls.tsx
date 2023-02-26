@@ -29,6 +29,10 @@ function Controls(props: {
         }
     }
 
+    const displayPendingPoints = ([ac, bd]: [number, number]) => {
+        return <div>Base points A+C: {ac} B+D: {bd}</div>
+    }
+
     const displayRevealedCards = (reveals: [Suit, Rank][][]) => {
         let player: Player = "A";
         const cards = reveals.map(x => {
@@ -68,13 +72,11 @@ function Controls(props: {
             return passTo(partner(phase.bid_winner))
         },
         RevealingCards: (phase: Phase['RevealingCards']) => {
-            const ref = useRef<HTMLInputElement | null>(null);
-
-            return (<div>Reveal cards for points (and manually enter their value)
+            return (<div>Reveal cards for points
                 {displayRevealedCards(phase.reveals.map(x => x ?? []))}
 
-                {amCurrentPlayer ? (<form onSubmit={(e) => { e.preventDefault(); onAct({ "ShowPoints": [[...props.selectedCards.keys()], Number(ref.current?.value)] }) }}>
-                    <input type="number" ref={ref} /> <input type="submit" value="Reveal selected" />
+                {amCurrentPlayer ? (<form onSubmit={(e) => { e.preventDefault(); onAct({ "ShowPoints": [...props.selectedCards.keys()] }) }}>
+                    <input type="submit" value="Reveal selected" />
                 </form>
                 ) : waitingMessage}
             </div>)
@@ -82,6 +84,7 @@ function Controls(props: {
         ReviewingRevealedCards: (phase: Phase['ReviewingRevealedCards']) => {
             return (<div>
                 {displayRevealedCards(phase.reveals)}
+                {displayPendingPoints(phase.extra_points)}
                 <input type="button" value="Confirm" onClick={() => onAct("Continue")} />
             </div>)
         },
@@ -99,7 +102,9 @@ function Controls(props: {
 
             let playerLabel = phase.trick.first_player;
 
-            return (<div>{control}
+            return (<div>
+                {displayPendingPoints(phase.extra_points)}
+                {control}
                 {phase.trick.cards.map(card => {
                     const result = (<CardView card={toCard(card)} focused={true} label={playerLabel} />);
                     playerLabel = nextPlayer(playerLabel);

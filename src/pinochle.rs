@@ -341,15 +341,15 @@ impl RoundState {
                     highest_bid,
                     trump,
                 },
-                Action::ShowPoints(cards, points),
+                Action::ShowPoints(cards),
             ) => {
                 let the_cards = cards
                     .into_iter()
                     .filter_map(|x| self.hands[self.current_player as usize].get(x))
                     .map(|x| *x)
                     .collect();
+                extra_points[self.current_player as usize % 2] += bonus_points(&the_cards, *trump);
                 reveals[self.current_player as usize] = Some(the_cards);
-                extra_points[self.current_player as usize % 2] += points;
                 self.current_player = next_cycle(&self.current_player).unwrap();
                 if reveals.iter().filter(|x| x.is_some()).count() == 4 {
                     self.current_player = *bid_winner;
@@ -482,6 +482,106 @@ impl RoundState {
     }
 }
 
+fn bonus_points(cards: &Vec<Card>, trump: Suit) -> i32 {
+    fn marriage(cards: &Vec<Card>, suit: Suit) -> i32 {
+        or_double(
+            cards,
+            vec![Card(suit, Rank::King), Card(suit, Rank::Queen)],
+            20,
+            40,
+        )
+    }
+
+    fn or_double(reveal: &Vec<Card>, pattern: Vec<Card>, points: i32, double: i32) -> i32 {
+        let mut counts = vec![0; pattern.len()];
+        for needle in reveal {
+            if let Some(index) = pattern.iter().position(|card| needle == card) {
+                counts[index] += 1
+            }
+        }
+        if counts.iter().all(|x| *x >= 2) {
+            double
+        } else if counts.iter().all(|x| *x >= 1) {
+            points
+        } else {
+            0
+        }
+    }
+
+    fn round(reveal: &Vec<Card>, rank: Rank, points: i32) -> i32 {
+        or_double(
+            reveal,
+            all::<Suit>().map(|suit| Card(suit, rank)).collect(),
+            points,
+            points * 10,
+        )
+    }
+
+    // pinochle
+    or_double(cards, vec![Card(Suit::Spades, Rank::Queen), Card(Suit::Diamonds, Rank::Jack)], 40, 300)  +
+    // run
+    or_double(cards, all::<Rank>().skip(1).map(|rank| Card(trump, rank)).collect(), 150 - 40, 1500 - 80)  +
+    // rounds
+    round(cards, Rank::Ace, 100)  +
+    round(cards, Rank::King, 80)  +
+    round(cards, Rank::Queen, 60)  +
+    round(cards, Rank::Jack, 40)  +
+    // trump marriage
+    marriage(cards, trump) +
+    // other marriages
+    all::<Suit>().map(|suit| marriage(cards, suit)).sum::<i32>() +
+    // nine of trump
+    or_double(cards, vec![Card(trump, Rank::Nine)], 10, 20)
+}
+
+#[test]
+fn test_bonus_points() {
+    use Rank::*;
+    use Suit::*;
+
+    fn case(cards: &str, trump: Suit) -> i32 {
+        let cards = cards
+            .split(' ')
+            .map(|x| {
+                let rank = match x.chars().next().unwrap() {
+                    '9' => Nine,
+                    'J' => Jack,
+                    'Q' => Queen,
+                    'K' => King,
+                    'T' => Ten,
+                    'A' => Ace,
+                    _ => todo!(),
+                };
+                let suit = match x.chars().skip(1).next().unwrap() {
+                    'H' => Hearts,
+                    'D' => Diamonds,
+                    'C' => Clubs,
+                    'S' => Spades,
+                    _ => todo!(),
+                };
+                Card(suit, rank)
+            })
+            .collect();
+
+        bonus_points(&cards, trump)
+    }
+
+    assert_eq!(case("AD AD AH AC", Clubs), 0);
+    assert_eq!(case("AS AD AH AC", Clubs), 100);
+    assert_eq!(case("AS AD AH AC AS AD AH AC", Clubs), 1000);
+    assert_eq!(case("JD QS", Clubs), 40);
+    assert_eq!(case("JD QS JD QS", Clubs), 300);
+    assert_eq!(case("KD QD", Diamonds), 40);
+    assert_eq!(case("KD QD", Clubs), 20);
+    assert_eq!(case("KD QD TD AD JD", Diamonds), 150);
+    assert_eq!(case("KD QD TD AD JD", Clubs), 20);
+    assert_eq!(case("KD QD TD AD JD 9D", Diamonds), 160);
+    assert_eq!(case("KD QD TD AD JD 9D KD QD TD AD JD 9D", Diamonds), 1520);
+    assert_eq!(case("KD QD KD QD TD AD JD 9D", Diamonds), 200);
+    assert_eq!(case("KD QD KS QS KH QH KC QC", Diamonds), 240);
+    assert_eq!(case("AC AH AS KD QD TD AD JD 9D", Diamonds), 260);
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Sequence, Deserialize, Serialize)]
 pub enum Player {
     A,
@@ -568,7 +668,7 @@ pub enum Action {
     Bid(i32),
     Continue,
     DeclareSuit(Suit),
-    ShowPoints(Vec<usize>, i32),
+    ShowPoints(Vec<usize>),
     Pass(Vec<usize>),
     Play(usize),
 }
