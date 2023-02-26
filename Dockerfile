@@ -29,9 +29,10 @@ RUN cargo build --target x86_64-unknown-linux-musl --release
 
 FROM node:latest as frontend_builder
 
-WORKDIR /pinochle
+WORKDIR /pinochle/www/
 COPY ./www/ .
 
+RUN npm install
 RUN npm run-script build
 
 ####################################################################################################
@@ -45,7 +46,7 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /pinochle
 
-COPY --from=frontend_builder /pinochle/build /pinochle/www/build
+COPY --from=frontend_builder /pinochle/www/build /pinochle/www/build
 
 # Copy our build
 COPY --from=builder /pinochle/target/x86_64-unknown-linux-musl/release/pinochle-again ./
