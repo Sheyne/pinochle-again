@@ -1,5 +1,5 @@
 export type Suit = "Diamonds" | "Clubs" | "Hearts" | "Spades"
-export type Rank = "Nine" | "Ten" | "Jack" | "Queen" | "King"
+export type Rank = "Nine" | "Ten" | "Jack" | "Queen" | "King" | "Ace"
 export type Card = { rank: Rank, suit: Suit }
 export type Player = "A" | "B" | "C" | "D"
 
