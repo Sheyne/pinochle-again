@@ -100,14 +100,14 @@ function Controls(props: {
                 }
             })();
 
-            let playerLabel = phase.trick.first_player;
             let firstPlayer = phase.trick.cards.reduce(prevPlayer, props.gameInfo.current_player);
             let lastBidWinner = firstPlayer;
             let winningTeam = (lastBidWinner.codePointAt(0) as number - ("A".codePointAt(0) as number)) % 2
             let lastTrickPile = phase.piles[winningTeam].slice(-4).map(toCard)
-            const displayTrickPile = (cards: Card[]) => {
+            const displayTrickPile = (cards: Card[], label=true) => {
+                let playerLabel = phase.trick.first_player;
                 return cards.map(card => {
-                    const result = (<CardView card={card} focused={true} label={playerLabel} />);
+                    const result = (<CardView card={card} focused={true} label={label ? playerLabel : undefined} />);
                     playerLabel = nextPlayer(playerLabel);
                     return result;
                 })
@@ -118,7 +118,7 @@ function Controls(props: {
                 {displayPendingPoints(phase.extra_points)}
                 {control}
                 <div><h3>This trick:</h3>{displayTrickPile(phase.trick.cards.map(toCard))}</div>
-                {phase.trick.cards.length < 2 ? <div><h3>Last trick:</h3>{displayTrickPile(lastTrickPile)}</div>: ""}
+                {phase.trick.cards.length < 2 ? <div><h3>Last trick:</h3>{displayTrickPile(lastTrickPile, false)}</div>: ""}
             </div>);
         }
     }
