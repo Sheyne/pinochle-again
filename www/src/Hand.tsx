@@ -17,6 +17,7 @@ const fromFirstRank = (x: string): Rank | undefined => {
         case "N": return "Nine"
         case "J": return "Jack"
         case "Q": return "Queen"
+        case "K": return "King"
         case "0":
         case "T": return "Ten"
         case "A":
