@@ -6,8 +6,11 @@ import { GameInfo, Phase, Player, partner, toCard, nextPlayer } from "./model";
 function Controls(props: {
     gameInfo: GameInfo,
     selectedCards: Set<number>,
+    player: Player,
     onAct?: (action: unknown) => void,
 }) {
+    const amCurrentPlayer = props.gameInfo.current_player == props.player;
+    const waitingMessage =  <div>Waiting for player {props.gameInfo.current_player}</div>
     const onAct = (action: unknown) => {
         if (props.onAct) {
             props.onAct(action)
@@ -60,6 +63,9 @@ function Controls(props: {
         },
         Play: (phase: Phase['Play']) => {
             const control = (() => {
+                if (!amCurrentPlayer) {
+                    return waitingMessage;
+                }
                 if (props.selectedCards.size === 1) {
                     return (<div><button onClick={() => onAct({ "Play": props.selectedCards.keys().next().value })}>Play</button></div>)
                 } else {
@@ -79,10 +85,14 @@ function Controls(props: {
         }
     }
 
-    return Object.entries(props.gameInfo.phase).map(([a, b]) => {
-        const phase = a as keyof Phase;
-        return subElements[phase](b as any);
-    })[0];
+    if (!amCurrentPlayer && !("Play" in props.gameInfo.phase)) {
+        return waitingMessage;
+    } else {
+        return Object.entries(props.gameInfo.phase).map(([a, b]) => {
+            const phase = a as keyof Phase;
+            return subElements[phase](b as any);
+        })[0];
+    }
 }
 
 export default Controls;

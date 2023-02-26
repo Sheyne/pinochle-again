@@ -80,6 +80,12 @@ export const toCard = ([suit, rank]: [Suit, Rank]): Card => {
 const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : "";
 
 export class Client {
+    async getGames(): Promise<string[]> {
+        const result = await fetch(`${baseUrl}/game`, {
+            mode: "cors",
+        });
+        return await result.json()
+    }
 
     async act(game: string, player: Player, action: unknown) {
         console.log("Acting", action);

@@ -5,9 +5,15 @@ use std::sync::Mutex;
 
 mod pinochle;
 use pinochle::{Action, Error, Game, GameInfo, Player};
-
 struct AppState {
     games: Mutex<HashMap<String, Game>>,
+}
+
+#[get("/game")]
+async fn get_games(data: web::Data<AppState>) -> impl Responder {
+    let games = data.games.lock().unwrap();
+    let names :Vec<_> = games.keys().collect();
+    HttpResponse::Ok().json(names)
 }
 
 #[get("/game/{game}")]
@@ -87,6 +93,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(shared.clone())
             .service(act)
             .service(get_game)
+            .service(get_games)
             .service(get_hand)
             .service(create)
             .service(actix_files::Files::new("/", "./www/build").index_file("index.html"))
