@@ -12,7 +12,7 @@ struct AppState {
 #[get("/game")]
 async fn get_games(data: web::Data<AppState>) -> impl Responder {
     let games = data.games.lock().unwrap();
-    let names :Vec<_> = games.keys().collect();
+    let names: Vec<_> = games.keys().collect();
     HttpResponse::Ok().json(names)
 }
 

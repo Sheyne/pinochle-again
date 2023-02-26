@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import "./Controls.css"
 import CardView from "./Card";
-import { GameInfo, Phase, Player, partner, toCard, nextPlayer } from "./model";
+import { GameInfo, Phase, Player, partner, toCard, nextPlayer, Suit, Rank } from "./model";
 
 function Controls(props: {
     gameInfo: GameInfo,
@@ -9,7 +9,7 @@ function Controls(props: {
     player: Player,
     onAct?: (action: unknown) => void,
 }) {
-    const amCurrentPlayer = props.gameInfo.current_player == props.player;
+    const amCurrentPlayer = props.gameInfo.current_player === props.player;
     const waitingMessage = <div>Waiting for player {props.gameInfo.current_player}</div>
     const onAct = (action: unknown) => {
         if (props.onAct) {
@@ -29,15 +29,28 @@ function Controls(props: {
         }
     }
 
+    const displayRevealedCards = (reveals: [Suit, Rank][][]) => {
+        let player: Player = "A";
+        const cards = reveals.map(x => {
+            const res = x.map(toCard).map(x => {
+                return (<CardView card={x} label={player} />);
+            });
+            player = nextPlayer(player);
+            return (<div>{res}</div>);
+        })
+        return <div>{cards}</div>
+    }
+
     const subElements = {
         Bidding: (phase: Phase['Bidding']) => {
             const ref = useRef<HTMLInputElement | null>(null);
-
+            if (!amCurrentPlayer) return waitingMessage;
             return (<form onSubmit={(e) => { e.preventDefault(); onAct({ "Bid": Number(ref.current?.value) }) }}>
                 <input type="number" ref={ref} /> <input type="submit" value="Bid" />
             </form>)
         },
         DeclareTrump: (phase: Phase['DeclareTrump']) => {
+            if (!amCurrentPlayer) return waitingMessage;
             return (<div>
                 Pick a trump suit:
                 <input type="button" value="Diamonds" onClick={() => onAct({ "DeclareSuit": "Diamonds" })} />
@@ -47,18 +60,29 @@ function Controls(props: {
             </div>)
         },
         PassingTo: (phase: Phase['PassingTo']) => {
+            if (!amCurrentPlayer) return waitingMessage;
             return passTo(phase.bid_winner)
         },
         PassingBack: (phase: Phase['PassingBack']) => {
+            if (!amCurrentPlayer) return waitingMessage;
             return passTo(partner(phase.bid_winner))
         },
         RevealingCards: (phase: Phase['RevealingCards']) => {
             const ref = useRef<HTMLInputElement | null>(null);
 
             return (<div>Reveal cards for points (and manually enter their value)
-                <form onSubmit={(e) => { e.preventDefault(); onAct({ "ShowPoints": [[], Number(ref.current?.value)] }) }}>
+                {displayRevealedCards(phase.reveals.map(x => x ?? []))}
+
+                {amCurrentPlayer ? (<form onSubmit={(e) => { e.preventDefault(); onAct({ "ShowPoints": [[...props.selectedCards.keys()], Number(ref.current?.value)] }) }}>
                     <input type="number" ref={ref} /> <input type="submit" value="Reveal selected" />
                 </form>
+                ) : waitingMessage}
+            </div>)
+        },
+        ReviewingRevealedCards: (phase: Phase['ReviewingRevealedCards']) => {
+            return (<div>
+                {displayRevealedCards(phase.reveals)}
+                <input type="button" value="Confirm" onClick={() => onAct("Continue")} />
             </div>)
         },
         Play: (phase: Phase['Play']) => {
@@ -85,14 +109,10 @@ function Controls(props: {
         }
     }
 
-    if (!amCurrentPlayer && !("Play" in props.gameInfo.phase)) {
-        return waitingMessage;
-    } else {
-        return Object.entries(props.gameInfo.phase).map(([a, b]) => {
-            const phase = a as keyof Phase;
-            return subElements[phase](b as any);
-        })[0];
-    }
+    return Object.entries(props.gameInfo.phase).map(([a, b]) => {
+        const phase = a as keyof Phase;
+        return subElements[phase](b as any);
+    })[0];
 }
 
 export default Controls;

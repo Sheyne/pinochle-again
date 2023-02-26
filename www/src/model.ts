@@ -21,6 +21,7 @@ export const selectionMax = (phase: keyof Phase) => {
         case "PassingBack": return 4;
         case "PassingTo": return 4;
         case "RevealingCards": return 12;
+        case "ReviewingRevealedCards": return 0;
         case "Play": return 1;
     }
 }
@@ -45,7 +46,15 @@ export type Phase = {
         trump: Suit,
     },
     "RevealingCards": {
-        reveals: number,
+        reveals: ([Suit, Rank][]|null)[],
+        extra_points: [number, number],
+        bid_winner: Player,
+        highest_bid: number,
+        trump: Suit,
+    },
+    "ReviewingRevealedCards": {
+        reveals: [Suit, Rank][][],
+        reviews: boolean[],
         extra_points: [number, number],
         bid_winner: Player,
         highest_bid: number,

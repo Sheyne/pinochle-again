@@ -115,6 +115,9 @@ impl Default for Game {
 
 impl Game {
     pub fn act(&mut self, player: Player, action: Action) -> Result<(), Error> {
+        if let Phase::ReviewingRevealedCards { .. } = self.hand.phase {
+            self.hand.current_player = player;
+        }
         if player != self.hand.current_player {
             return Err(Error::NotTheCurrentPlayer);
         }
@@ -324,7 +327,7 @@ impl RoundState {
                 self.current_player = *bid_winner;
                 self.phase = Phase::RevealingCards {
                     extra_points: [0, 0],
-                    reveals: 0,
+                    reveals: Default::default(),
                     trump: *trump,
                     highest_bid: *highest_bid,
                     bid_winner: *bid_winner,
@@ -338,12 +341,42 @@ impl RoundState {
                     highest_bid,
                     trump,
                 },
-                Action::ShowPoints(_, points),
+                Action::ShowPoints(cards, points),
             ) => {
-                *reveals += 1;
+                let the_cards = cards
+                    .into_iter()
+                    .filter_map(|x| self.hands[self.current_player as usize].get(x))
+                    .map(|x| *x)
+                    .collect();
+                reveals[self.current_player as usize] = Some(the_cards);
                 extra_points[self.current_player as usize % 2] += points;
                 self.current_player = next_cycle(&self.current_player).unwrap();
-                if reveals == &4 {
+                if reveals.iter().filter(|x| x.is_some()).count() == 4 {
+                    self.current_player = *bid_winner;
+                    self.phase = Phase::ReviewingRevealedCards {
+                        reveals: reveals.clone(),
+                        trump: *trump,
+                        bid_winner: *bid_winner,
+                        highest_bid: *highest_bid,
+                        extra_points: *extra_points,
+                        reviews: Default::default(),
+                    }
+                }
+            }
+            (
+                Phase::ReviewingRevealedCards {
+                    reviews,
+                    extra_points,
+                    bid_winner,
+                    highest_bid,
+                    trump,
+                    ..
+                },
+                Action::Continue,
+            ) => {
+                reviews[self.current_player as usize] = true;
+                self.current_player = next_cycle(&self.current_player).unwrap();
+                if reviews.iter().all(|x| *x) {
                     self.current_player = *bid_winner;
                     self.phase = Phase::Play {
                         trump: *trump,
@@ -498,11 +531,19 @@ enum Phase {
         trump: Suit,
     },
     RevealingCards {
-        reveals: usize,
+        reveals: [Option<Vec<Card>>; 4],
         extra_points: [i32; 2],
         bid_winner: Player,
         highest_bid: i32,
         trump: Suit,
+    },
+    ReviewingRevealedCards {
+        reveals: [Option<Vec<Card>>; 4],
+        reviews: [bool; 4],
+        trump: Suit,
+        bid_winner: Player,
+        highest_bid: i32,
+        extra_points: [i32; 2],
     },
     Play {
         trump: Suit,
@@ -525,6 +566,7 @@ pub enum Error {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Action {
     Bid(i32),
+    Continue,
     DeclareSuit(Suit),
     ShowPoints(Vec<usize>, i32),
     Pass(Vec<usize>),
