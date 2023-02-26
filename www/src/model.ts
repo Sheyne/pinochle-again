@@ -12,6 +12,8 @@ export const nextPlayer = (player: Player): Player => {
     }
 }
 
+export const prevPlayer = (player: Player): Player => nextPlayer(nextPlayer(nextPlayer(player)))
+
 export const partner = (player: Player) => nextPlayer(nextPlayer(player));
 
 export const selectionMax = (phase: keyof Phase) => {
@@ -65,7 +67,7 @@ export type Phase = {
         bid_winner: Player,
         highest_bid: number,
         extra_points: [number, number],
-        piles: [Card[], Card[]],
+        piles: [[Suit, Rank][], [Suit, Rank][]],
         trick: {
             "first_player": Player,
             "cards": [Suit, Rank][],

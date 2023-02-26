@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import "./Controls.css"
 import CardView from "./Card";
-import { GameInfo, Phase, Player, partner, toCard, nextPlayer, Suit, Rank } from "./model";
+import { GameInfo, Phase, Player, partner, toCard, nextPlayer, Suit, Rank, prevPlayer, Card } from "./model";
 
 function Controls(props: {
     gameInfo: GameInfo,
@@ -101,15 +101,24 @@ function Controls(props: {
             })();
 
             let playerLabel = phase.trick.first_player;
-
+            let firstPlayer = phase.trick.cards.reduce(prevPlayer, props.gameInfo.current_player);
+            let lastBidWinner = firstPlayer;
+            let winningTeam = (lastBidWinner.codePointAt(0) as number - ("A".codePointAt(0) as number)) % 2
+            let lastTrickPile = phase.piles[winningTeam].slice(-4).map(toCard)
+            const displayTrickPile = (cards: Card[]) => {
+                return cards.map(card => {
+                    const result = (<CardView card={card} focused={true} label={playerLabel} />);
+                    playerLabel = nextPlayer(playerLabel);
+                    return result;
+                })
+            }
+            
+            
             return (<div>
                 {displayPendingPoints(phase.extra_points)}
                 {control}
-                {phase.trick.cards.map(card => {
-                    const result = (<CardView card={toCard(card)} focused={true} label={playerLabel} />);
-                    playerLabel = nextPlayer(playerLabel);
-                    return result;
-                })}
+                <div><h3>This trick:</h3>{displayTrickPile(phase.trick.cards.map(toCard))}</div>
+                {phase.trick.cards.length < 2 ? <div><h3>Last trick:</h3>{displayTrickPile(lastTrickPile)}</div>: ""}
             </div>);
         }
     }
