@@ -10,7 +10,7 @@ function Controls(props: {
     onAct?: (action: unknown) => void,
 }) {
     const amCurrentPlayer = props.gameInfo.current_player == props.player;
-    const waitingMessage =  <div>Waiting for player {props.gameInfo.current_player}</div>
+    const waitingMessage = <div>Waiting for player {props.gameInfo.current_player}</div>
     const onAct = (action: unknown) => {
         if (props.onAct) {
             props.onAct(action)

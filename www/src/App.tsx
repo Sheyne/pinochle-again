@@ -95,16 +95,16 @@ function App() {
                 <Controls gameInfo={gameData} player={myPlayer} onAct={gotAction} selectedCards={selectedCards} />
             </div>) : "") : (
                 <div>
-                    <input type="button" value="Join as player A" onClick={()=>setMyPlayer('A')} />
-                    <input type="button" value="Join as player B" onClick={()=>setMyPlayer('B')} />
-                    <input type="button" value="Join as player C" onClick={()=>setMyPlayer('C')} />
-                    <input type="button" value="Join as player D" onClick={()=>setMyPlayer('D')} />
+                    <input type="button" value="Join as player A" onClick={() => setMyPlayer('A')} />
+                    <input type="button" value="Join as player B" onClick={() => setMyPlayer('B')} />
+                    <input type="button" value="Join as player C" onClick={() => setMyPlayer('C')} />
+                    <input type="button" value="Join as player D" onClick={() => setMyPlayer('D')} />
                 </div>
-                )}
+            )}
 
             {gameData ? "" : <div>
                 {gameList ? gameList.map(name =>
-                    <input type="button" value={`Join "${name}"`} onClick={() => {setGameName(name); refresh(name);}} />) : ""}
+                    <input type="button" value={`Join "${name}"`} onClick={() => { setGameName(name); refresh(name); }} />) : ""}
                 <form onSubmit={e => { e.preventDefault(); startGame(); }}>
                     <input type="text" ref={gameCreationElement} />
                     <input type="submit" value="Create Game" />
