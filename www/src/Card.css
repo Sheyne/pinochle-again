@@ -1,0 +1,36 @@
+.Card {
+    border-radius: .1em;
+    border: .02em solid rgba(0,0,0,0);
+}
+
+.Card.size-small {
+    font-size: 5em;
+}
+.Card .label {
+    color: black;
+    font-size: .5em;
+}
+
+.Card.size-big {
+    font-size: 6em;
+}
+
+.Card.selected-true {
+    border-color: blue;
+    background-color: white;
+}
+
+.Card.focused-true {
+    margin-right: 0;
+}
+.Card.focused-true.selected-false {
+    background-color: #ccc;
+}
+
+.Card.suit-Hearts,.Card.suit-Diamonds {
+    color: red;
+}
+
+.Card.suit-Spades,.Card.suit-Clubs {
+    color: black;
+}
