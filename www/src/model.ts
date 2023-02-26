@@ -77,11 +77,13 @@ export const toCard = ([suit, rank]: [Suit, Rank]): Card => {
     return { rank, suit };
 }
 
+const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : "";
+
 export class Client {
 
     async act(game: string, player: Player, action: unknown) {
         console.log("Acting", action);
-        const result = await fetch(`http://localhost:8080/game/${game}/${player}/act`, {
+        const result = await fetch(`${baseUrl}/game/${game}/${player}/act`, {
             mode: "cors",
             method: "POST",
             body: JSON.stringify(action),
@@ -92,16 +94,16 @@ export class Client {
 
     async startGame(game: string) {
         console.log("Creating game", game);
-        const result = await fetch(`http://localhost:8080/game/${game}`, { mode: "cors", method: "PUT" });
+        const result = await fetch(`${baseUrl}/game/${game}`, { mode: "cors", method: "PUT" });
         return await result.text()
     }
 
     async getGameData(game: string): Promise<GameInfo> {
-        return await (await fetch(`http://localhost:8080/game/${game}`)).json() as GameInfo
+        return await (await fetch(`${baseUrl}/game/${game}`)).json() as GameInfo
     }
 
     async getHand(game: string, player: Player): Promise<Card[]> {
-        const myHandResponse = await fetch(`http://localhost:8080/game/${game}/hand/${player}`);
+        const myHandResponse = await fetch(`${baseUrl}/game/${game}/hand/${player}`);
         return (await myHandResponse.json() as [Suit, Rank][]).map(toCard);
     }
 }

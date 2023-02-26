@@ -89,6 +89,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_game)
             .service(get_hand)
             .service(create)
+            .service(actix_files::Files::new("/", "./www/build").index_file("index.html"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
