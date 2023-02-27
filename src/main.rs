@@ -70,6 +70,9 @@ async fn act(
                 Error::NotTheCurrentPlayer => {
                     HttpResponse::BadRequest().body("NotTheCurrentPlayer")
                 }
+                Error::CardIsNotLegalToPlay => {
+                    HttpResponse::BadRequest().body("CardIsNotLegalToPlay")
+                }
                 Error::IncorrectAction => HttpResponse::BadRequest().body("IncorrectAction"),
             }
         } else {

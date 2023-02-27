@@ -189,6 +189,60 @@ impl RoundState {
     }
 }
 
+fn is_legal_play(pile: &[Card], hand: &[Card], card: Card, trump: Suit) -> bool {
+    // if there isn't a card played, anything is legal
+    if let Some(first_card) = pile.get(0) {
+        let starting_suit = first_card.0;
+        // if the card doesn't match the starting suit
+        let suitwise_legal = if card.0 != starting_suit {
+            // you'd better not have any of the starting suit
+            if hand.iter().any(|c| c.0 == starting_suit) {
+                false
+            } else {
+                // and if you didn't play trump, you'd better have none of those either
+                card.0 == trump || !hand.iter().any(|c| c.0 == trump)
+            }
+        } else {
+            true
+        };
+        if suitwise_legal {
+            if card.0 == starting_suit {
+                let max_of_lead = *pile
+                    .iter()
+                    .filter(|x| x.0 == starting_suit)
+                    .max_by_key(|x| x.1)
+                    .expect("There's at least one card");
+                // if the card is of the starting suit, but it doesn't beat the best card so far
+                if card.1 <= max_of_lead.1 {
+                    // then you better not have any cards that can beat the best card so far
+                    !hand.iter().any(|c| c.1 > max_of_lead.1)
+                } else {
+                    true
+                }
+            } else if card.0 == trump {
+                if let Some(max_of_trump) = pile.iter().filter(|x| x.0 == trump).max_by_key(|x| x.1)
+                {
+                    // if the card is trump, but it doesn't beat the best trump so far
+                    if card.1 <= max_of_trump.1 {
+                        // then you better not have any cards that can beat the best trump so far
+                        !hand.iter().any(|c| c.1 > max_of_trump.1)
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    } else {
+        true
+    }
+}
+
 struct EachPlayer {
     current_player: Player,
     gas: usize,
@@ -407,6 +461,10 @@ impl RoundState {
                     return Err(Error::PlayingNonExtantCard);
                 }
                 let card = current_hand.remove(index);
+                if !is_legal_play(&trick.cards, &current_hand, card, *trump) {
+                    return Err(Error::CardIsNotLegalToPlay);
+                }
+
                 trick.cards.push(card);
                 if trick.cards.len() == 4 {
                     let player_cards = each_player(trick.first_player).zip(trick.cards.iter());
@@ -661,6 +719,7 @@ pub enum Error {
     PassingWrongNumberOfCards,
     IncorrectAction,
     NotTheCurrentPlayer,
+    CardIsNotLegalToPlay,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
