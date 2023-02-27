@@ -1,0 +1,731 @@
+{
+    "hand": {
+        "current_player": "D",
+        "hands": [
+            [
+                [
+                    "Diamonds",
+                    "Nine"
+                ],
+                [
+                    "Spades",
+                    "Jack"
+                ],
+                [
+                    "Diamonds",
+                    "Ace"
+                ],
+                [
+                    "Hearts",
+                    "Ten"
+                ],
+                [
+                    "Clubs",
+                    "Jack"
+                ],
+                [
+                    "Hearts",
+                    "Ace"
+                ],
+                [
+                    "Spades",
+                    "Ace"
+                ],
+                [
+                    "Hearts",
+                    "King"
+                ],
+                [
+                    "Clubs",
+                    "Nine"
+                ],
+                [
+                    "Clubs",
+                    "Queen"
+                ],
+                [
+                    "Hearts",
+                    "Queen"
+                ],
+                [
+                    "Spades",
+                    "Queen"
+                ]
+            ],
+            [
+                [
+                    "Diamonds",
+                    "Ten"
+                ],
+                [
+                    "Clubs",
+                    "Nine"
+                ],
+                [
+                    "Clubs",
+                    "Jack"
+                ],
+                [
+                    "Diamonds",
+                    "Jack"
+                ],
+                [
+                    "Diamonds",
+                    "Nine"
+                ],
+                [
+                    "Clubs",
+                    "King"
+                ],
+                [
+                    "Diamonds",
+                    "King"
+                ],
+                [
+                    "Diamonds",
+                    "Queen"
+                ],
+                [
+                    "Clubs",
+                    "Queen"
+                ],
+                [
+                    "Hearts",
+                    "King"
+                ],
+                [
+                    "Clubs",
+                    "King"
+                ],
+                [
+                    "Diamonds",
+                    "Queen"
+                ]
+            ],
+            [
+                [
+                    "Hearts",
+                    "Ace"
+                ],
+                [
+                    "Clubs",
+                    "Ace"
+                ],
+                [
+                    "Hearts",
+                    "Jack"
+                ],
+                [
+                    "Spades",
+                    "Nine"
+                ],
+                [
+                    "Diamonds",
+                    "Jack"
+                ],
+                [
+                    "Hearts",
+                    "Queen"
+                ],
+                [
+                    "Hearts",
+                    "Ten"
+                ],
+                [
+                    "Diamonds",
+                    "King"
+                ],
+                [
+                    "Spades",
+                    "Ten"
+                ],
+                [
+                    "Clubs",
+                    "Ten"
+                ],
+                [
+                    "Hearts",
+                    "Nine"
+                ],
+                [
+                    "Clubs",
+                    "Ace"
+                ]
+            ],
+            [
+                [
+                    "Spades",
+                    "Nine"
+                ],
+                [
+                    "Clubs",
+                    "Ten"
+                ],
+                [
+                    "Spades",
+                    "Ten"
+                ],
+                [
+                    "Hearts",
+                    "Jack"
+                ],
+                [
+                    "Spades",
+                    "Ace"
+                ],
+                [
+                    "Diamonds",
+                    "Ten"
+                ],
+                [
+                    "Hearts",
+                    "Nine"
+                ],
+                [
+                    "Spades",
+                    "Queen"
+                ],
+                [
+                    "Diamonds",
+                    "Ace"
+                ],
+                [
+                    "Spades",
+                    "Jack"
+                ],
+                [
+                    "Spades",
+                    "King"
+                ],
+                [
+                    "Spades",
+                    "King"
+                ]
+            ]
+        ],
+        "phase": {
+            "Play": {
+                "trump": "Spades",
+                "bid_winner": "D",
+                "highest_bid": 0,
+                "extra_points": [
+                    0,
+                    160
+                ],
+                "piles": [
+                    [],
+                    []
+                ],
+                "trick": {
+                    "first_player": "D",
+                    "cards": []
+                }
+            }
+        },
+        "bots": [
+            {
+                "state": {
+                    "played_cards": [],
+                    "hand_sizes": [
+                        12,
+                        12,
+                        12,
+                        12
+                    ],
+                    "players": [
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [
+                                [
+                                    "Diamonds",
+                                    "Ten"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Nine"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Jack"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Jack"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Nine"
+                                ],
+                                [
+                                    "Clubs",
+                                    "King"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "King"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Queen"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Queen"
+                                ],
+                                [
+                                    "Hearts",
+                                    "King"
+                                ],
+                                [
+                                    "Clubs",
+                                    "King"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Queen"
+                                ]
+                            ],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        }
+                    ]
+                },
+                "player": "B",
+                "hand": [
+                    [
+                        "Diamonds",
+                        "Ten"
+                    ],
+                    [
+                        "Clubs",
+                        "Nine"
+                    ],
+                    [
+                        "Clubs",
+                        "Jack"
+                    ],
+                    [
+                        "Diamonds",
+                        "Jack"
+                    ],
+                    [
+                        "Diamonds",
+                        "Nine"
+                    ],
+                    [
+                        "Clubs",
+                        "King"
+                    ],
+                    [
+                        "Diamonds",
+                        "King"
+                    ],
+                    [
+                        "Diamonds",
+                        "Queen"
+                    ],
+                    [
+                        "Clubs",
+                        "Queen"
+                    ],
+                    [
+                        "Hearts",
+                        "King"
+                    ],
+                    [
+                        "Clubs",
+                        "King"
+                    ],
+                    [
+                        "Diamonds",
+                        "Queen"
+                    ]
+                ],
+                "playing_phase": {
+                    "trump": "Spades",
+                    "bid_winner": "D",
+                    "highest_bid": 0,
+                    "extra_points": [
+                        0,
+                        160
+                    ],
+                    "piles": [
+                        [],
+                        []
+                    ],
+                    "trick": {
+                        "first_player": "D",
+                        "cards": []
+                    }
+                }
+            },
+            {
+                "state": {
+                    "played_cards": [],
+                    "hand_sizes": [
+                        12,
+                        12,
+                        12,
+                        12
+                    ],
+                    "players": [
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [
+                                [
+                                    "Hearts",
+                                    "Ace"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Ace"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Jack"
+                                ],
+                                [
+                                    "Spades",
+                                    "Nine"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Jack"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Queen"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Ten"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "King"
+                                ],
+                                [
+                                    "Spades",
+                                    "Ten"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Ten"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Nine"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Ace"
+                                ]
+                            ],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        }
+                    ]
+                },
+                "player": "C",
+                "hand": [
+                    [
+                        "Hearts",
+                        "Ace"
+                    ],
+                    [
+                        "Clubs",
+                        "Ace"
+                    ],
+                    [
+                        "Hearts",
+                        "Jack"
+                    ],
+                    [
+                        "Spades",
+                        "Nine"
+                    ],
+                    [
+                        "Diamonds",
+                        "Jack"
+                    ],
+                    [
+                        "Hearts",
+                        "Queen"
+                    ],
+                    [
+                        "Hearts",
+                        "Ten"
+                    ],
+                    [
+                        "Diamonds",
+                        "King"
+                    ],
+                    [
+                        "Spades",
+                        "Ten"
+                    ],
+                    [
+                        "Clubs",
+                        "Ten"
+                    ],
+                    [
+                        "Hearts",
+                        "Nine"
+                    ],
+                    [
+                        "Clubs",
+                        "Ace"
+                    ]
+                ],
+                "playing_phase": {
+                    "trump": "Spades",
+                    "bid_winner": "D",
+                    "highest_bid": 0,
+                    "extra_points": [
+                        0,
+                        160
+                    ],
+                    "piles": [
+                        [],
+                        []
+                    ],
+                    "trick": {
+                        "first_player": "D",
+                        "cards": []
+                    }
+                }
+            },
+            {
+                "state": {
+                    "played_cards": [],
+                    "hand_sizes": [
+                        12,
+                        12,
+                        12,
+                        12
+                    ],
+                    "players": [
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        },
+                        {
+                            "known_cards": [
+                                [
+                                    "Spades",
+                                    "Nine"
+                                ],
+                                [
+                                    "Clubs",
+                                    "Ten"
+                                ],
+                                [
+                                    "Spades",
+                                    "Ten"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Jack"
+                                ],
+                                [
+                                    "Spades",
+                                    "Ace"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Ten"
+                                ],
+                                [
+                                    "Hearts",
+                                    "Nine"
+                                ],
+                                [
+                                    "Spades",
+                                    "Queen"
+                                ],
+                                [
+                                    "Diamonds",
+                                    "Ace"
+                                ],
+                                [
+                                    "Spades",
+                                    "Jack"
+                                ],
+                                [
+                                    "Spades",
+                                    "King"
+                                ],
+                                [
+                                    "Spades",
+                                    "King"
+                                ]
+                            ],
+                            "highest_possible": [
+                                "Ace",
+                                "Ace",
+                                "Ace",
+                                "Ace"
+                            ]
+                        }
+                    ]
+                },
+                "player": "D",
+                "hand": [
+                    [
+                        "Spades",
+                        "Nine"
+                    ],
+                    [
+                        "Clubs",
+                        "Ten"
+                    ],
+                    [
+                        "Spades",
+                        "Ten"
+                    ],
+                    [
+                        "Hearts",
+                        "Jack"
+                    ],
+                    [
+                        "Spades",
+                        "Ace"
+                    ],
+                    [
+                        "Diamonds",
+                        "Ten"
+                    ],
+                    [
+                        "Hearts",
+                        "Nine"
+                    ],
+                    [
+                        "Spades",
+                        "Queen"
+                    ],
+                    [
+                        "Diamonds",
+                        "Ace"
+                    ],
+                    [
+                        "Spades",
+                        "Jack"
+                    ],
+                    [
+                        "Spades",
+                        "King"
+                    ],
+                    [
+                        "Spades",
+                        "King"
+                    ]
+                ],
+                "playing_phase": {
+                    "trump": "Spades",
+                    "bid_winner": "D",
+                    "highest_bid": 0,
+                    "extra_points": [
+                        0,
+                        160
+                    ],
+                    "piles": [
+                        [],
+                        []
+                    ],
+                    "trick": {
+                        "first_player": "D",
+                        "cards": []
+                    }
+                }
+            }
+        ]
+    },
+    "scores": [
+        0,
+        0
+    ],
+    "current_player": "A"
+}

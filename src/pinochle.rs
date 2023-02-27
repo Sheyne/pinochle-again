@@ -1,4 +1,5 @@
-use enum_iterator::{all, cardinality, next_cycle, Sequence};
+// use super::ai::Bot;
+use enum_iterator::{all, cardinality, next_cycle, previous_cycle, Sequence};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,9 @@ use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Sequence, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Sequence, Serialize, Deserialize, Hash,
+)]
 pub enum Rank {
     Nine,
     Jack,
@@ -46,7 +49,9 @@ impl Display for Rank {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize, Hash,
+)]
 pub enum Suit {
     Diamonds,
     Clubs,
@@ -69,8 +74,10 @@ impl Display for Suit {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize)]
-pub struct Card(Suit, Rank);
+#[derive(
+    Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize, Hash,
+)]
+pub struct Card(pub Suit, pub Rank);
 
 impl Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -160,6 +167,7 @@ struct RoundState {
     current_player: Player,
     hands: [Vec<Card>; 4],
     phase: Phase,
+    // bots: [Option<Bot>; 3],
 }
 
 impl Display for RoundState {
@@ -185,6 +193,7 @@ impl RoundState {
                 first_bidder: player,
                 bids: vec![],
             },
+            // bots: Default::default(),
         }
     }
 }
@@ -215,7 +224,9 @@ fn is_legal_play(pile: &[Card], hand: &[Card], card: Card, trump: Suit) -> bool 
                 // if the card is of the starting suit, but it doesn't beat the best card so far
                 if card.1 <= max_of_lead.1 {
                     // then you better not have any cards that can beat the best card so far
-                    !hand.iter().any(|c| c.1 > max_of_lead.1)
+                    !hand
+                        .iter()
+                        .any(|c| c.0 == starting_suit && c.1 > max_of_lead.1)
                 } else {
                     true
                 }
@@ -225,7 +236,7 @@ fn is_legal_play(pile: &[Card], hand: &[Card], card: Card, trump: Suit) -> bool 
                     // if the card is trump, but it doesn't beat the best trump so far
                     if card.1 <= max_of_trump.1 {
                         // then you better not have any cards that can beat the best trump so far
-                        !hand.iter().any(|c| c.1 > max_of_trump.1)
+                        !hand.iter().any(|c| c.0 == trump && c.1 > max_of_trump.1)
                     } else {
                         true
                     }
@@ -243,14 +254,47 @@ fn is_legal_play(pile: &[Card], hand: &[Card], card: Card, trump: Suit) -> bool 
     }
 }
 
+#[test]
+fn test_is_legal_to_play() {
+    use Player::*;
+    use Rank::*;
+    use Suit::*;
+
+    let card = Card(Clubs, King);
+    let trick = Trick {
+        first_player: A,
+        cards: vec![Card(Clubs, Ten)],
+    };
+    let hand = vec![
+        Card(Spades, Nine),
+        Card(Spades, Nine),
+        Card(Diamonds, Nine),
+        Card(Clubs, Queen),
+        Card(Spades, King),
+        Card(Clubs, Ten),
+        Card(Spades, Jack),
+        Card(Spades, Ten),
+        Card(Clubs, King),
+        Card(Clubs, Nine),
+        Card(Hearts, Ace),
+    ];
+
+    assert!(is_legal_play(&trick.cards, &hand, card, Spades));
+    assert!(is_legal_play(&trick.cards, &hand, card, Diamonds));
+    assert!(is_legal_play(&trick.cards, &hand, card, Hearts));
+    assert!(is_legal_play(&trick.cards, &hand, card, Clubs));
+}
+
 struct EachPlayer {
-    current_player: Player,
+    start: Player,
+    end: Player,
     gas: usize,
 }
 fn each_player(player: Player) -> EachPlayer {
     EachPlayer {
-        current_player: player,
         gas: cardinality::<Player>(),
+        start: previous_cycle(&player).unwrap(),
+        end: player,
     }
 }
 
@@ -259,14 +303,35 @@ impl Iterator for EachPlayer {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.gas > 0 {
-            let player = self.current_player;
-            self.current_player = next_cycle(&self.current_player).unwrap();
             self.gas -= 1;
-            Some(player)
+            self.start = next_cycle(&self.start).unwrap();
+            Some(self.start)
         } else {
             None
         }
     }
+}
+
+impl DoubleEndedIterator for EachPlayer {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.gas > 0 {
+            self.gas -= 1;
+            self.end = previous_cycle(&self.end).unwrap();
+            Some(self.end)
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn test_each_player() {
+    let mut iter = each_player(Player::A);
+    assert_eq!(iter.next_back().unwrap(), Player::D);
+    assert_eq!(iter.next().unwrap(), Player::A);
+    assert_eq!(iter.next_back().unwrap(), Player::C);
+    assert_eq!(iter.next_back().unwrap(), Player::B);
+    assert!(iter.next_back().is_none());
 }
 
 fn partner(player: Player) -> Player {
@@ -432,7 +497,7 @@ impl RoundState {
                 self.current_player = next_cycle(&self.current_player).unwrap();
                 if reviews.iter().all(|x| *x) {
                     self.current_player = *bid_winner;
-                    self.phase = Phase::Play {
+                    let playing_phase = PlayingPhase {
                         trump: *trump,
                         bid_winner: *bid_winner,
                         highest_bid: *highest_bid,
@@ -442,83 +507,73 @@ impl RoundState {
                             first_player: *bid_winner,
                             cards: vec![],
                         },
-                    }
+                    };
+                    // self.bots = [
+                    //     Some(Bot::new(
+                    //         Player::B,
+                    //         self.hands[1].clone(),
+                    //         playing_phase.clone(),
+                    //     )),
+                    //     Some(Bot::new(
+                    //         Player::C,
+                    //         self.hands[2].clone(),
+                    //         playing_phase.clone(),
+                    //     )),
+                    //     Some(Bot::new(
+                    //         Player::D,
+                    //         self.hands[3].clone(),
+                    //         playing_phase.clone(),
+                    //     )),
+                    // ];
+                    self.phase = Phase::Play(playing_phase)
                 }
             }
-            (
-                Phase::Play {
-                    trick,
-                    trump,
-                    piles,
-                    extra_points,
-                    highest_bid,
-                    bid_winner,
-                },
-                Action::Play(index),
-            ) => {
+            (Phase::Play(playing_phase), Action::Play(index)) => {
                 let current_hand = &mut self.hands[self.current_player as usize];
                 if index >= current_hand.len() {
                     return Err(Error::PlayingNonExtantCard);
                 }
-                let card = current_hand.remove(index);
-                if !is_legal_play(&trick.cards, &current_hand, card, *trump) {
-                    return Err(Error::CardIsNotLegalToPlay);
-                }
+                let card = current_hand[index];
 
-                trick.cards.push(card);
-                if trick.cards.len() == 4 {
-                    let player_cards = each_player(trick.first_player).zip(trick.cards.iter());
-                    let (winning_player, _) = player_cards
-                        .max_by(|(_, a), (_, b)| compare(**a, **b, *trump, trick.cards[0].0))
-                        .unwrap();
-                    piles[winning_player as usize % 2].extend(trick.cards.drain(..));
-                    self.current_player = winning_player;
-                    trick.first_player = winning_player;
+                let (next_player, res) =
+                    playing_phase.play(self.current_player, &current_hand, card)?;
 
-                    if current_hand.len() == 0 {
-                        fn count(
-                            cards: &Vec<Card>,
-                            last_trick: bool,
-                            extra_points: i32,
-                            highest_bid: i32,
-                            is_bid_winner: bool,
-                        ) -> i32 {
-                            let score =
-                                cards.iter().map(|Card(_, rank)| rank.points()).sum::<i32>()
-                                    + (if last_trick { 10 } else { 0 })
-                                    + extra_points;
+                current_hand.remove(index);
 
-                            if is_bid_winner {
-                                if score >= highest_bid {
-                                    score
-                                } else {
-                                    -highest_bid
-                                }
-                            } else {
-                                score
-                            }
-                        }
+                // self.bots[0].as_mut().unwrap().update(
+                //     self.current_player,
+                //     card,
+                //     playing_phase.trump,
+                //     &playing_phase.trick.cards,
+                // );
+                // self.bots[1].as_mut().unwrap().update(
+                //     self.current_player,
+                //     card,
+                //     playing_phase.trump,
+                //     &playing_phase.trick.cards,
+                // );
+                // self.bots[2].as_mut().unwrap().update(
+                //     self.current_player,
+                //     card,
+                //     playing_phase.trump,
+                //     &playing_phase.trick.cards,
+                // );
 
-                        let a = count(
-                            &piles[0],
-                            winning_player as usize % 2 == 0,
-                            extra_points[0],
-                            *highest_bid,
-                            *bid_winner as usize % 2 == 0,
-                        );
-                        let b = count(
-                            &piles[1],
-                            winning_player as usize % 2 == 1,
-                            extra_points[1],
-                            *highest_bid,
-                            *bid_winner as usize % 2 == 1,
-                        );
-
-                        return Ok(Some((a, b)));
-                    }
-                } else {
-                    self.current_player = next_cycle(&self.current_player).unwrap();
-                }
+                self.current_player = next_player;
+                // return if res.is_some() || self.current_player == Player::A {
+                return Ok(res);
+                // } else {
+                //     let bot = self.bots[self.current_player as usize - 1]
+                //         .as_ref()
+                //         .unwrap();
+                //     let card = bot.get_move();
+                //     self.act(Action::Play(
+                //         self.hands[self.current_player as usize]
+                //             .iter()
+                //             .position(|x| *x == card)
+                //             .unwrap(),
+                //     ))
+                // };
             }
             _ => return Err(Error::IncorrectAction),
         }
@@ -663,9 +718,9 @@ impl TryFrom<usize> for Player {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct Trick {
-    first_player: Player,
-    cards: Vec<Card>,
+pub struct Trick {
+    pub first_player: Player,
+    pub cards: Vec<Card>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -703,14 +758,87 @@ enum Phase {
         highest_bid: i32,
         extra_points: [i32; 2],
     },
-    Play {
-        trump: Suit,
-        bid_winner: Player,
-        highest_bid: i32,
-        extra_points: [i32; 2],
-        piles: [Vec<Card>; 2],
-        trick: Trick,
-    },
+    Play(PlayingPhase),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayingPhase {
+    pub trump: Suit,
+    pub bid_winner: Player,
+    pub highest_bid: i32,
+    pub extra_points: [i32; 2],
+    pub piles: [Vec<Card>; 2],
+    pub trick: Trick,
+}
+
+impl PlayingPhase {
+    pub fn play(
+        &mut self,
+        current_player: Player,
+        current_hand: &[Card],
+        card: Card,
+    ) -> Result<(Player, Option<(i32, i32)>), Error> {
+        if !is_legal_play(&self.trick.cards, &current_hand, card, self.trump) {
+            return Err(Error::CardIsNotLegalToPlay);
+        }
+
+        self.trick.cards.push(card);
+        if self.trick.cards.len() == 4 {
+            let player_cards = each_player(self.trick.first_player)
+                .rev()
+                .zip(self.trick.cards.iter().rev());
+            let (winning_player, _) = player_cards
+                .max_by(|(_, a), (_, b)| compare(**a, **b, self.trump, self.trick.cards[0].0))
+                .unwrap();
+            self.piles[winning_player as usize % 2].extend(self.trick.cards.drain(..));
+            self.trick.first_player = winning_player;
+
+            if current_hand.len() == 1 {
+                fn count(
+                    cards: &Vec<Card>,
+                    last_trick: bool,
+                    extra_points: i32,
+                    highest_bid: i32,
+                    is_bid_winner: bool,
+                ) -> i32 {
+                    let score = cards.iter().map(|Card(_, rank)| rank.points()).sum::<i32>()
+                        + (if last_trick { 10 } else { 0 })
+                        + extra_points;
+
+                    if is_bid_winner {
+                        if score >= highest_bid {
+                            score
+                        } else {
+                            -highest_bid
+                        }
+                    } else {
+                        score
+                    }
+                }
+
+                let a = count(
+                    &self.piles[0],
+                    winning_player as usize % 2 == 0,
+                    self.extra_points[0],
+                    self.highest_bid,
+                    self.bid_winner as usize % 2 == 0,
+                );
+                let b = count(
+                    &self.piles[1],
+                    winning_player as usize % 2 == 1,
+                    self.extra_points[1],
+                    self.highest_bid,
+                    self.bid_winner as usize % 2 == 1,
+                );
+
+                Ok((winning_player, Some((a, b))))
+            } else {
+                Ok((winning_player, None))
+            }
+        } else {
+            Ok((next_cycle(&current_player).unwrap(), None))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

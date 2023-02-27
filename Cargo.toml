@@ -14,3 +14,5 @@ serde_json = "*"
 actix-web = "*"
 actix-cors = "*"
 actix-files = "*"
+itertools = "*"
+ordered-float = { version = "3.0", default-features = false }

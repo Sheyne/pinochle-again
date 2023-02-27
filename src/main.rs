@@ -3,6 +3,8 @@ use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+mod ai;
+
 mod pinochle;
 use pinochle::{Action, Error, Game, GameInfo, Player};
 struct AppState {
