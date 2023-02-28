@@ -1,7 +1,8 @@
 // use super::ai::Bot;
 use enum_iterator::{all, cardinality, next_cycle, previous_cycle, Sequence};
+use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
@@ -85,10 +86,13 @@ impl Display for Card {
     }
 }
 
-fn shuffled() -> Vec<Card> {
+fn shuffled<R>(rng: &mut R) -> Vec<Card>
+where
+    R: Rng + ?Sized,
+{
     let mut deck = all::<Card>().collect::<Vec<_>>();
     deck.extend(all::<Card>());
-    deck.shuffle(&mut thread_rng());
+    deck.shuffle(rng);
     deck
 }
 
@@ -104,23 +108,29 @@ fn dealt(mut deck: Vec<Card>) -> [Vec<Card>; 4] {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Game {
+pub struct Game<R: Rng> {
+    rng: R,
     hand: RoundState,
     scores: [i32; 2],
     current_player: Player,
 }
 
-impl Default for Game {
+impl Default for Game<ThreadRng> {
     fn default() -> Self {
-        Self {
-            current_player: Player::A,
-            hand: RoundState::start(Player::A),
-            scores: [0; 2],
-        }
+        Self::new(thread_rng())
     }
 }
 
-impl Game {
+impl<R: Rng> Game<R> {
+    pub fn new(mut rng: R) -> Self {
+        Self {
+            hand: RoundState::start(&mut rng, Player::A),
+            rng,
+            current_player: Player::A,
+            scores: [0; 2],
+        }
+    }
+
     pub fn act(&mut self, player: Player, action: Action) -> Result<(), Error> {
         if let Phase::ReviewingRevealedCards { .. } = self.hand.phase {
             self.hand.current_player = player;
@@ -133,7 +143,7 @@ impl Game {
             self.scores[0] += a;
             self.scores[1] += b;
             self.current_player = next_cycle(&self.current_player).unwrap();
-            self.hand = RoundState::start(self.current_player);
+            self.hand = RoundState::start(&mut self.rng, self.current_player);
         }
         Ok(())
     }
@@ -151,8 +161,8 @@ pub struct GameInfo {
     scores: [i32; 2],
 }
 
-impl From<&Game> for GameInfo {
-    fn from(value: &Game) -> Self {
+impl<R: Rng> From<&Game<R>> for GameInfo {
+    fn from(value: &Game<R>) -> Self {
         GameInfo {
             first_bidder: value.current_player,
             current_player: value.hand.current_player,
@@ -185,10 +195,13 @@ impl Display for RoundState {
 }
 
 impl RoundState {
-    pub fn start(player: Player) -> Self {
+    pub fn start<R>(rng: &mut R, player: Player) -> Self
+    where
+        R: Rng + ?Sized,
+    {
         Self {
             current_player: player,
-            hands: dealt(shuffled()),
+            hands: dealt(shuffled(rng)),
             phase: Phase::Bidding {
                 first_bidder: player,
                 bids: vec![],

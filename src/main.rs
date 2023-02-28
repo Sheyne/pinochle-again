@@ -1,5 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
+use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -7,8 +9,32 @@ mod ai;
 
 mod pinochle;
 use pinochle::{Action, Error, Game, GameInfo, Player};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct GameState {
+    seed: [u8; 32],
+    actions: Vec<(Player, Action)>,
+}
+
+impl GameState {
+    fn random() -> Self {
+        Self {
+            seed: thread_rng().gen(),
+            actions: Default::default(),
+        }
+    }
+
+    fn game(&self) -> Game<StdRng> {
+        let mut game = Game::new(StdRng::from_seed(self.seed));
+        for (player, action) in &self.actions {
+            game.act(*player, action.clone()).unwrap();
+        }
+        game
+    }
+}
+
 struct AppState {
-    games: Mutex<HashMap<String, Game>>,
+    games: Mutex<HashMap<String, GameState>>,
 }
 
 #[get("/game")]
@@ -23,7 +49,7 @@ async fn get_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Re
     let games = data.games.lock().unwrap();
     let name = game.into_inner();
     if let Some(game) = games.get(&name) {
-        let info: GameInfo = game.into();
+        let info: GameInfo = (&game.game()).into();
         HttpResponse::Ok().json(&info)
     } else {
         HttpResponse::NotFound().body("")
@@ -46,7 +72,7 @@ async fn get_hand(game: web::Path<(String, Player)>, data: web::Data<AppState>) 
     let games = data.games.lock().unwrap();
     let (name, player) = game.into_inner();
     if let Some(game) = games.get(&name) {
-        HttpResponse::Ok().json(&game.player_hand(player))
+        HttpResponse::Ok().json(&game.game().player_hand(player))
     } else {
         HttpResponse::NotFound().body("")
     }
@@ -61,7 +87,7 @@ async fn act(
     let mut games = data.games.lock().unwrap();
     let (name, player) = game.into_inner();
     if let Some(game) = games.get_mut(&name) {
-        if let Some(err) = game.act(player, info.0).err() {
+        if let Some(err) = game.game().act(player, info.0.clone()).err() {
             match err {
                 Error::PlayingNonExtantCard => {
                     HttpResponse::BadRequest().body("PlayingNonExtantCard")
@@ -78,6 +104,7 @@ async fn act(
                 Error::IncorrectAction => HttpResponse::BadRequest().body("IncorrectAction"),
             }
         } else {
+            game.actions.push((player, info.0));
             HttpResponse::Ok().body("")
         }
     } else {
@@ -85,7 +112,7 @@ async fn act(
     }
 }
 
-fn create(game: web::Path<String>, info: Game, data: web::Data<AppState>) {
+fn create(game: web::Path<String>, info: GameState, data: web::Data<AppState>) {
     let mut games = data.games.lock().unwrap();
     let name = game.into_inner();
     games.insert(name, info);
@@ -94,7 +121,7 @@ fn create(game: web::Path<String>, info: Game, data: web::Data<AppState>) {
 #[put("/game/{game}")]
 async fn create_with(
     game: web::Path<String>,
-    info: web::Json<Game>,
+    info: web::Json<GameState>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     create(game, info.into_inner(), data);
@@ -103,7 +130,7 @@ async fn create_with(
 
 #[post("/game/{game}")]
 async fn create_without(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
-    create(game, Game::default(), data);
+    create(game, GameState::random(), data);
     HttpResponse::Ok()
 }
 
