@@ -88,6 +88,8 @@ export const toCard = ([suit, rank]: [Suit, Rank]): Card => {
     return { rank, suit };
 }
 
+export type FullState = {"seed": number[], "actions": unknown[]};
+
 const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : "";
 
 export class Client {
@@ -122,5 +124,18 @@ export class Client {
     async getHand(game: string, player: Player): Promise<Card[]> {
         const myHandResponse = await fetch(`${baseUrl}/game/${game}/hand/${player}`);
         return (await myHandResponse.json() as [Suit, Rank][]).map(toCard);
+    }
+
+    async getFullState(game: string): Promise<FullState> {
+        const full = await fetch(`${baseUrl}/game/${game}/full`);
+        return await full.json();
+    }
+    async setFullState(game: string, state: FullState) {
+         await fetch(`${baseUrl}/game/${game}`, {
+            mode: "cors",
+            method: "PUT",
+            body: JSON.stringify(state),
+            headers: { "Content-Type": "application/json" }
+        });
     }
 }

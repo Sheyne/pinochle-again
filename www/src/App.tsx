@@ -1,8 +1,8 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import './App.css';
 import Controls from "./Controls";
 import Hand from "./Hand"
-import { Card, GameInfo, Client, selectionMax, Phase, Player } from "./model";
+import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState } from "./model";
 
 const client = new Client();
 
@@ -20,13 +20,27 @@ function App() {
     const [gameName, setGameName] = useState<string | undefined>(undefined);
     const [myHand, setMyHand] = useState<Card[]>([]);
     const [gameData, setGameData] = useState<GameInfo | undefined>(undefined);
-    const [myPlayer, setMyPlayer] = useState<Player | undefined>(undefined)
+    const [myPlayer, setMyPlayer] = useState<Player | undefined>(undefined);
+    const [trackFullState, setTrackFullState] = useState<boolean>(false);
+    const [fullState, setFullState] = useState<FullState>({ seed: [], actions: [] });
 
     if (!gameName && !gameList) {
         (async () => {
             setGameList(await client.getGames());
         })()
     }
+
+    useEffect(() => {
+        const listener = (ev: KeyboardEvent) => {
+            if (ev.code === "Backquote" && ev.ctrlKey) {
+                setTrackFullState(!trackFullState);
+            }
+        };
+        window.addEventListener("keyup", listener);
+        return () => {
+            window.removeEventListener("keyup", listener);
+        }
+    })
 
     const refresh = async (game: string | undefined = gameName) => {
         if (game) {
@@ -36,10 +50,16 @@ function App() {
                 const hand = await client.getHand(game, myPlayer);
                 setMyHand(hand);
             }
+            if (trackFullState) {
+                setFullState(await client.getFullState(game));
+            }
         }
     }
 
-    (window as any).globalRefreshHook = refresh;
+    useEffect(() => {
+        const interval = setInterval(refresh, 300);
+        return () => clearInterval(interval);
+    });
 
     const phase = gameData && Object.getOwnPropertyNames(gameData.phase)[0] as keyof Phase
 
@@ -115,6 +135,22 @@ function App() {
                 selected={selectedCards}
                 onSelectionChanged={selectCards}
             />
+
+            {trackFullState ? <div style={{ backgroundColor: "#ddd", padding: "1em" }}>
+                <div><input type="text" style={{ width: "100%" }} value={fullState.seed.toString()} onChange={(e) => {
+                    try {
+                        if (gameName) {
+                            client.setFullState(gameName, { seed: JSON.parse(`[${e.target.value}]`), actions: fullState.actions }); refresh(gameName);
+                        }
+                    } catch { }
+                }} /></div>
+                <textarea rows={25} style={{ width: "100%" }} onChange={(e) => {
+                    try {
+                        if (gameName) {
+                            client.setFullState(gameName, { actions: JSON.parse(e.target.value), seed: fullState.seed }); refresh(gameName);
+                        }
+                    } catch { }
+                }} value={JSON.stringify(fullState.actions)}></textarea></div> : ""}
         </div>
     );
 }
