@@ -14,6 +14,10 @@ const trumpSymbols = {
 }
 
 function App() {
+    const [pendingSeed, setPendingSeed] = useState<string | undefined>();
+    const [pendingActions, setPendingActions] = useState<string | undefined>();
+    const [lastServerSeed, setLastServerSeed] = useState<string | undefined>();
+    const [lastServerActions, setLastServerActions] = useState<string | undefined>();
     const [selectedCards, setSelectedCards] = useState(new Set<number>());
     const gameCreationElement = useRef<HTMLInputElement | null>(null);
     const [gameList, setGameList] = useState<string[] | undefined>(undefined);
@@ -22,7 +26,6 @@ function App() {
     const [gameData, setGameData] = useState<GameInfo | undefined>(undefined);
     const [myPlayer, setMyPlayer] = useState<Player | undefined>(undefined);
     const [trackFullState, setTrackFullState] = useState<boolean>(false);
-    const [fullState, setFullState] = useState<FullState>({ seed: [], actions: [] });
 
     if (!gameName && !gameList) {
         (async () => {
@@ -51,7 +54,17 @@ function App() {
                 setMyHand(hand);
             }
             if (trackFullState) {
-                setFullState(await client.getFullState(game));
+                const fullState = await client.getFullState(game);
+                const actionsString = JSON.stringify(fullState.actions);
+                if (actionsString !== lastServerActions || pendingActions === undefined) {
+                    setLastServerActions(actionsString);
+                    setPendingActions(actionsString);
+                }
+                const seedString = fullState.seed.toString();
+                if (lastServerSeed != seedString || pendingSeed === undefined) {
+                    setLastServerSeed(seedString);
+                    setPendingSeed(seedString);
+                }
             }
         }
     }
@@ -136,21 +149,23 @@ function App() {
                 onSelectionChanged={selectCards}
             />
 
-            {trackFullState ? <div style={{ backgroundColor: "#ddd", padding: "1em" }}>
-                <div><input type="text" style={{ width: "100%" }} value={fullState.seed.toString()} onChange={(e) => {
-                    try {
-                        if (gameName) {
-                            client.setFullState(gameName, { seed: JSON.parse(`[${e.target.value}]`), actions: fullState.actions }); refresh(gameName);
-                        }
-                    } catch { }
-                }} /></div>
-                <textarea rows={25} style={{ width: "100%" }} onChange={(e) => {
-                    try {
-                        if (gameName) {
-                            client.setFullState(gameName, { actions: JSON.parse(e.target.value), seed: fullState.seed }); refresh(gameName);
-                        }
-                    } catch { }
-                }} value={JSON.stringify(fullState.actions)}></textarea></div> : ""}
+            {trackFullState ? <form style={{ backgroundColor: "#ddd", padding: "1em" }} onSubmit={(e) => {
+                e.preventDefault();
+                try {
+                    if (gameName) {
+                        client.setFullState(gameName, {
+                            seed: JSON.parse(`[${pendingSeed}]`),
+                            actions: JSON.parse(pendingActions ?? "")
+                        }); refresh(gameName);
+                    }
+                } catch { }
+                setPendingActions(undefined);
+                setPendingSeed(undefined);
+            }} >
+                <label>Seed: <input type="text" style={{ width: "100%" }} value={pendingSeed} onChange={e => {setPendingSeed(e.target.value); }} /></label>
+                <label>Actions:<textarea rows={25} style={{ width: "100%" }} value={pendingActions} onChange={e => {setPendingActions(e.target.value); }}></textarea></label>
+                <input type="submit" value="Set" />
+            </form> : ""}
         </div>
     );
 }
