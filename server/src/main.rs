@@ -1,14 +1,11 @@
 use actix_cors::Cors;
 use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
+use pinochle::ai::Bot;
+use pinochle::{Action, Error, Game, GameInfo, Phase, Player};
 use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-
-mod ai;
-
-mod pinochle;
-use pinochle::{Action, Error, Game, GameInfo, Player};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct GameState {
@@ -76,6 +73,57 @@ async fn get_hand(game: web::Path<(String, Player)>, data: web::Data<AppState>) 
     } else {
         HttpResponse::NotFound().body("")
     }
+}
+
+#[post("/game/{game}/trigger-bot")]
+async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+    let mut games = data.games.lock().unwrap();
+    let name = game.into_inner();
+    if let Some(game_init) = games.get_mut(&name) {
+        let bot_player = game_init.game().current_player();
+
+        let mut game = Game::new(StdRng::from_seed(game_init.seed));
+
+        let mut bot: Option<Bot> = None;
+
+        for (current_player, action) in &game_init.actions {
+            let info: GameInfo = (&game).into();
+            if let Phase::Play(playing_phase) = info.phase {
+                if bot.is_none() {
+                    bot = Some(Bot::new(
+                        bot_player,
+                        game.player_hand(bot_player),
+                        playing_phase.clone(),
+                    ));
+                }
+                if let Action::Play(card) = action {
+                    if let Some(bot) = &mut bot {
+                        let player_hand = game.player_hand(*current_player);
+
+                        bot.update(
+                            *current_player,
+                            player_hand[*card],
+                            playing_phase.trump,
+                            &playing_phase.trick.cards,
+                        );
+                    }
+                }
+            }
+            game.act(*current_player, action.clone()).unwrap();
+        }
+        let chosen_card = bot.unwrap().get_move();
+
+        let chosen_action = game
+            .player_hand(bot_player)
+            .iter()
+            .position(|x| *x == chosen_card)
+            .unwrap();
+
+        game_init
+            .actions
+            .push((bot_player, Action::Play(chosen_action)));
+    }
+    HttpResponse::Ok().body("")
 }
 
 #[post("/game/{game}/{player}/act")]
@@ -154,6 +202,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_games)
             .service(get_hand)
             .service(create_without)
+            .service(trigger_bot)
             .service(create_with)
             .service(actix_files::Files::new("/", "./www/build").index_file("index.html"))
     })

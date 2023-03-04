@@ -1,4 +1,3 @@
-// use super::ai::Bot;
 use enum_iterator::{all, cardinality, next_cycle, previous_cycle, Sequence};
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
@@ -7,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fmt::Display;
+
+pub mod ai;
 
 #[derive(
     Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Sequence, Serialize, Deserialize, Hash,
@@ -148,6 +149,10 @@ impl<R: Rng> Game<R> {
         Ok(())
     }
 
+    pub fn current_player(&self) -> Player {
+        self.hand.current_player
+    }
+
     pub fn player_hand(&self, player: Player) -> Vec<Card> {
         self.hand.hands[player as usize].clone()
     }
@@ -155,10 +160,10 @@ impl<R: Rng> Game<R> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameInfo {
-    first_bidder: Player,
-    current_player: Player,
-    phase: Phase,
-    scores: [i32; 2],
+    pub first_bidder: Player,
+    pub current_player: Player,
+    pub phase: Phase,
+    pub scores: [i32; 2],
 }
 
 impl<R: Rng> From<&Game<R>> for GameInfo {
@@ -177,7 +182,6 @@ struct RoundState {
     current_player: Player,
     hands: [Vec<Card>; 4],
     phase: Phase,
-    // bots: [Option<Bot>; 3],
 }
 
 impl Display for RoundState {
@@ -206,7 +210,6 @@ impl RoundState {
                 first_bidder: player,
                 bids: vec![],
             },
-            // bots: Default::default(),
         }
     }
 }
@@ -521,23 +524,6 @@ impl RoundState {
                             cards: vec![],
                         },
                     };
-                    // self.bots = [
-                    //     Some(Bot::new(
-                    //         Player::B,
-                    //         self.hands[1].clone(),
-                    //         playing_phase.clone(),
-                    //     )),
-                    //     Some(Bot::new(
-                    //         Player::C,
-                    //         self.hands[2].clone(),
-                    //         playing_phase.clone(),
-                    //     )),
-                    //     Some(Bot::new(
-                    //         Player::D,
-                    //         self.hands[3].clone(),
-                    //         playing_phase.clone(),
-                    //     )),
-                    // ];
                     self.phase = Phase::Play(playing_phase)
                 }
             }
@@ -553,40 +539,8 @@ impl RoundState {
 
                 current_hand.remove(index);
 
-                // self.bots[0].as_mut().unwrap().update(
-                //     self.current_player,
-                //     card,
-                //     playing_phase.trump,
-                //     &playing_phase.trick.cards,
-                // );
-                // self.bots[1].as_mut().unwrap().update(
-                //     self.current_player,
-                //     card,
-                //     playing_phase.trump,
-                //     &playing_phase.trick.cards,
-                // );
-                // self.bots[2].as_mut().unwrap().update(
-                //     self.current_player,
-                //     card,
-                //     playing_phase.trump,
-                //     &playing_phase.trick.cards,
-                // );
-
                 self.current_player = next_player;
-                // return if res.is_some() || self.current_player == Player::A {
                 return Ok(res);
-                // } else {
-                //     let bot = self.bots[self.current_player as usize - 1]
-                //         .as_ref()
-                //         .unwrap();
-                //     let card = bot.get_move();
-                //     self.act(Action::Play(
-                //         self.hands[self.current_player as usize]
-                //             .iter()
-                //             .position(|x| *x == card)
-                //             .unwrap(),
-                //     ))
-                // };
             }
             _ => return Err(Error::IncorrectAction),
         }
@@ -737,7 +691,7 @@ pub struct Trick {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum Phase {
+pub enum Phase {
     Bidding {
         first_bidder: Player,
         bids: Vec<i32>,

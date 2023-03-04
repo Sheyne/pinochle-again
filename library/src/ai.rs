@@ -1,8 +1,8 @@
-use super::pinochle::{Card, Player, PlayingPhase, Rank, Suit};
+use super::{Card, Player, PlayingPhase, Rank, Suit};
 use enum_iterator::all;
 use itertools::Itertools;
 use ordered_float::NotNan;
-use rand::seq::SliceRandom;
+use rand::prelude::SliceRandom;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::iter::repeat;
@@ -402,7 +402,7 @@ impl Bot {
 
 #[test]
 fn try_bot() {
-    use super::pinochle::Trick;
+    use pinochle::Trick;
     use Rank::*;
     use Suit::*;
 
