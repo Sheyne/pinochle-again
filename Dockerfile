@@ -49,9 +49,9 @@ WORKDIR /pinochle
 COPY --from=frontend_builder /pinochle/www/build /pinochle/www/build
 
 # Copy our build
-COPY --from=builder /pinochle/target/x86_64-unknown-linux-musl/release/pinochle-again ./
+COPY --from=builder /pinochle/target/x86_64-unknown-linux-musl/release/pinochle-server ./
 
 # Use an unprivileged user.
 USER pinochle:pinochle
 
-CMD ["/pinochle/pinochle-again"]
+CMD ["/pinochle/pinochle-server"]

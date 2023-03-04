@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug Server",
-            "program": "${workspaceFolder}/target/debug/pinochle-again",
+            "program": "${workspaceFolder}/target/debug/pinochle-server",
             "args": [],
             "cwd": "${workspaceFolder}"
         },
