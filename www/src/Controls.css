@@ -1,3 +1,8 @@
-.Controls {
-    
+#this-trick {
+    padding: 0.5em;
+    background-color: #ccf;
+}
+#last-trick {
+    padding: 0.5em;
+    background-color: #cff;
 }

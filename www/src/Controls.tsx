@@ -83,8 +83,8 @@ function Controls(props: {
         },
         ReviewingRevealedCards: (phase: Phase['ReviewingRevealedCards']) => {
             return (<div>
-                {displayRevealedCards(phase.reveals)}
                 {displayPendingPoints(phase.extra_points)}
+                {displayRevealedCards(phase.reveals)}
                 <input type="button" value="Confirm" onClick={() => onAct("Continue")} />
             </div>)
         },
@@ -117,8 +117,8 @@ function Controls(props: {
             return (<div>
                 {displayPendingPoints(phase.extra_points)}
                 {control}
-                <div><h3>This trick:</h3>{displayTrickPile(phase.trick.cards.map(toCard))}</div>
-                {phase.trick.cards.length < 2 ? <div><h3>Last trick:</h3>{displayTrickPile(lastTrickPile, false)}</div>: ""}
+                <div id="this-trick"><h3>This trick:</h3>{displayTrickPile(phase.trick.cards.map(toCard))}</div>
+                {phase.trick.cards.length < 2 && lastTrickPile.length > 0 ? <div id="last-trick"><h3>Last trick:</h3>{displayTrickPile(lastTrickPile, false)}</div>: ""}
             </div>);
         }
     }

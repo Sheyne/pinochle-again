@@ -123,8 +123,12 @@ function App() {
         <div className="App">
             {myPlayer ? (gameData ? (<div>
                 <div>I am: {myPlayer} on table: {gameName}</div>
-                <div>A+C: {gameData.scores[0]} B+D: {gameData.scores[1]}</div>
-                {trump && <div>Trump is {trumpSymbols[trump]}</div>}
+                <div>A+C have {gameData.scores[0]} points. B+D have {gameData.scores[1]} points.</div>
+                <Hand cards={myHand}
+                    selected={selectedCards}
+                    onSelectionChanged={selectCards}
+                />
+                {trump && <div id="trump-suit"><span className={`suit-${trump}`}>{trumpSymbols[trump]}</span></div>}
                 <Controls gameInfo={gameData} player={myPlayer} onAct={gotAction} selectedCards={selectedCards} />
             </div>) : "") : (
                 <div>
@@ -143,11 +147,6 @@ function App() {
                     <input type="submit" value="Create Game" />
                 </form>
             </div>}
-
-            <Hand cards={myHand}
-                selected={selectedCards}
-                onSelectionChanged={selectCards}
-            />
 
             {trackFullState ? <form style={{ backgroundColor: "#ddd", padding: "1em" }} onSubmit={(e) => {
                 e.preventDefault();

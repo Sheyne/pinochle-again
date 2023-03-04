@@ -26,11 +26,3 @@
 .Card.focused-true.selected-false {
     background-color: #ccc;
 }
-
-.Card.suit-Hearts,.Card.suit-Diamonds {
-    color: red;
-}
-
-.Card.suit-Spades,.Card.suit-Clubs {
-    color: black;
-}

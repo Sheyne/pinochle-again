@@ -1,0 +1,18 @@
+.suit-Hearts,.suit-Diamonds {
+    color: red;
+}
+
+.suit-Spades,.suit-Clubs {
+    color: black;
+}
+
+#trump-suit {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 2em;
+    border-radius: 40%;
+    text-align: center;
+    width: 1.3em;
+    background-color: #ffb;
+}
