@@ -403,17 +403,17 @@ fn test_compare() {
 impl RoundState {
     fn act(&mut self, action: Action) -> Result<Option<(i32, i32)>, Error> {
         match (&mut self.phase, action) {
-            (Phase::Bidding { bids, .. }, Action::Bid(amount)) => {
+            (Phase::Bidding { bids, first_bidder }, Action::Bid(amount)) => {
                 bids.push(amount);
                 self.current_player = next_cycle(&self.current_player).unwrap();
                 if bids.len() == 4 {
-                    let (winning_bidder, highest_bid) = bids
+                    let (highest_bid, winning_bidder) = bids
                         .iter()
-                        .map(|x| *x)
-                        .enumerate()
-                        .max_by_key(|(_, b)| *b)
+                        .zip(each_player(*first_bidder))
+                        .map(|x| (*x.0, x.1))
+                        .max_by_key(|(b, _)| *b)
                         .unwrap();
-                    self.current_player = winning_bidder.try_into().unwrap();
+                    self.current_player = winning_bidder;
                     self.phase = Phase::DeclareTrump {
                         bid_winner: self.current_player,
                         highest_bid,
