@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react"
 import './App.css';
+import { useState, useRef, useEffect } from "react"
+import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState } from "./model";
 import Controls from "./Controls";
 import Hand from "./Hand"
-import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState } from "./model";
+import Rules from "./Rules";
 
 const client = new Client();
 
@@ -147,6 +148,8 @@ function App() {
                     <input type="submit" value="Create Game" />
                 </form>
             </div>}
+
+            <Rules />
 
             {trackFullState ? <form style={{ backgroundColor: "#ddd", padding: "1em" }} onSubmit={(e) => {
                 e.preventDefault();

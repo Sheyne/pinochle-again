@@ -1,0 +1,11 @@
+.the-rules table, .the-rules th, .the-rules td {
+    border: 1px solid black;
+}  
+
+.the-rules th {
+    background-color: #ccc;
+}
+
+.the-rules .size-small {
+    font-size: 3em;
+}
