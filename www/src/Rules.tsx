@@ -13,13 +13,13 @@ function Rules() {
             <table>
                 <thead><th></th><th>Example</th><th>Points</th><th>Double</th></thead>
                 <tr>
-                    <td>Pinochle:</td>
+                    <td>Pinochle: <p>(Must be exactly Jack of Diamonds and Queen of Spades)</p></td>
                     <td><Card card={{rank: "Jack", suit: "Diamonds"}}/><Card card={{rank: "Queen", suit: "Spades"}}/></td>
                     <td>40</td>
                     <td>300</td>
                 </tr>
                 <tr>
-                    <td>Marriage:</td>
+                    <td>Marriage: <p>(K+Q of the same non-trump suit)</p></td>
                     <td><Card card={{rank: "Queen", suit: "Diamonds"}}/><Card card={{rank: "King", suit: "Diamonds"}}/></td>
                     <td>20</td>
                 </tr>
@@ -32,21 +32,25 @@ function Rules() {
                     <td>Round Ace:</td>
                     <td><Card card={{rank: "Ace", suit: "Diamonds"}}/><Card card={{rank: "Ace", suit: "Clubs"}}/><Card card={{rank: "Ace", suit: "Hearts"}}/><Card card={{rank: "Ace", suit: "Spades"}}/></td>
                     <td>100</td>
+                    <td>1000</td>
                 </tr>
                 <tr>
                     <td>Round King:</td>
                     <td><Card card={{rank: "King", suit: "Diamonds"}}/><Card card={{rank: "King", suit: "Clubs"}}/><Card card={{rank: "King", suit: "Hearts"}}/><Card card={{rank: "King", suit: "Spades"}}/></td>
                     <td>80</td>
+                    <td>800</td>
                 </tr>
                 <tr>
                     <td>Round Queen:</td>
                     <td><Card card={{rank: "Queen", suit: "Diamonds"}}/><Card card={{rank: "Queen", suit: "Clubs"}}/><Card card={{rank: "Queen", suit: "Hearts"}}/><Card card={{rank: "Queen", suit: "Spades"}}/></td>
                     <td>60</td>
+                    <td>600</td>
                 </tr>
                 <tr>
                     <td>Round Jack:</td>
                     <td><Card card={{rank: "Jack", suit: "Diamonds"}}/><Card card={{rank: "Jack", suit: "Clubs"}}/><Card card={{rank: "Jack", suit: "Hearts"}}/><Card card={{rank: "Jack", suit: "Spades"}}/></td>
                     <td>40</td>
+                    <td>400</td>
                 </tr>
                 <tr>
                     <td>Nine of Trump:</td>

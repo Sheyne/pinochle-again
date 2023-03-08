@@ -9,3 +9,7 @@
 .the-rules .size-small {
     font-size: 3em;
 }
+
+.the-rules td p {
+    font-size: 75%;
+}
