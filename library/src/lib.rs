@@ -76,6 +76,21 @@ impl Display for Suit {
     }
 }
 
+impl TryFrom<usize> for Suit {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Suit::Diamonds),
+            1 => Ok(Suit::Clubs),
+            2 => Ok(Suit::Hearts),
+            3 => Ok(Suit::Spades),
+            _ => Err(()),
+        }
+    }
+}
+
+
 #[derive(
     Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize, Hash,
 )]
@@ -113,7 +128,7 @@ pub struct Game<R: Rng> {
     rng: R,
     hand: RoundState,
     scores: [i32; 2],
-    current_player: Player,
+    first_bidder: Player,
 }
 
 impl Default for Game<ThreadRng> {
@@ -127,7 +142,7 @@ impl<R: Rng> Game<R> {
         Self {
             hand: RoundState::start(&mut rng, Player::A),
             rng,
-            current_player: Player::A,
+            first_bidder: Player::A,
             scores: [0; 2],
         }
     }
@@ -137,37 +152,29 @@ impl<R: Rng> Game<R> {
         if let Some((a, b)) = result {
             self.scores[0] += a;
             self.scores[1] += b;
-            self.current_player = next_cycle(&self.current_player).unwrap();
-            self.hand = RoundState::start(&mut self.rng, self.current_player);
+            self.first_bidder = next_cycle(&self.first_bidder).unwrap();
+            self.hand = RoundState::start(&mut self.rng, self.first_bidder);
         }
         Ok(())
+    }
+
+    pub fn phase(&self) -> &Phase {
+        &self.hand.phase
     }
 
     pub fn current_player(&self) -> Player {
         self.hand.current_player
     }
+    pub fn first_bidder(&self) -> Player {
+        self.first_bidder
+    }
 
     pub fn player_hand(&self, player: Player) -> Vec<Card> {
         self.hand.hands[player as usize].clone()
     }
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GameInfo {
-    pub first_bidder: Player,
-    pub current_player: Player,
-    pub phase: Phase,
-    pub scores: [i32; 2],
-}
-
-impl<R: Rng> From<&Game<R>> for GameInfo {
-    fn from(value: &Game<R>) -> Self {
-        GameInfo {
-            first_bidder: value.current_player,
-            current_player: value.hand.current_player,
-            phase: value.hand.phase.clone(),
-            scores: value.scores,
-        }
+    pub fn scores(&self) -> [i32; 2] {
+        self.scores
     }
 }
 
@@ -721,6 +728,20 @@ pub enum Phase {
     Play(PlayingPhase),
 }
 
+impl Phase {
+    pub fn action(&self) -> ActionKind {
+        match self {
+            Phase::Bidding { .. } => ActionKind::Bid,
+            Phase::DeclareTrump { .. } => ActionKind::DeclareSuit,
+            Phase::PassingTo { .. } => ActionKind::Pass,
+            Phase::PassingBack { .. } => ActionKind::Pass,
+            Phase::RevealingCards { .. } => ActionKind::ShowPoints,
+            Phase::ReviewingRevealedCards { .. } => ActionKind::Continue,
+            Phase::Play(..) => ActionKind::Play,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayingPhase {
     pub trump: Suit,
@@ -818,4 +839,100 @@ pub enum Action {
     ShowPoints(Vec<usize>),
     Pass(Vec<usize>),
     Play(usize),
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum ActionKind {
+    Bid,
+    Continue,
+    DeclareSuit,
+    ShowPoints,
+    Pass,
+    Play,
+}
+
+impl Action {
+    pub fn encode(&self, out: &mut Vec<u8>) {
+        fn cards_to_bitmap(cards: &[usize], out: &mut Vec<u8>) {
+            let mut map = 0u16;
+            for card in cards {
+                map |= 1 << card;
+            }
+            out.extend(map.to_le_bytes())
+        }
+
+        match self {
+            Action::Bid(amt) => {
+                let amt = if *amt == 0 {
+                    0
+                } else {
+                    ((amt - 250) / 25) as u16 + 1
+                };
+                let bytes = amt.to_le_bytes();
+                out.extend(bytes)
+            }
+            Action::Continue(player) => out.push(*player as u8),
+            Action::DeclareSuit(suit) => out.push(*suit as u8),
+            Action::ShowPoints(cards) => cards_to_bitmap(cards, out),
+            Action::Pass(cards) => cards_to_bitmap(cards, out),
+            Action::Play(card) => out.push(*card as u8),
+        }
+    }
+
+    pub fn decode<'a, 'b>(bytes: &'a [u8], phase: &'b Phase) -> Option<(&'a [u8], Self)> {
+        fn cards_from_bitmap(cards: u16) -> Vec<usize> {
+            (0..16)
+                .flat_map(|idx| {
+                    if (cards & (1 << idx)) != 0 {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+
+        Some(match phase.action() {
+            ActionKind::Bid => {
+                let bid = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
+                (
+                    bytes.get(2..)?,
+                    Action::Bid(if bid == 0 {
+                        0
+                    } else {
+                        (bid - 1) as i32 * 25 + 250
+                    }),
+                )
+            }
+            ActionKind::Continue => {
+                let player = *bytes.get(0)?;
+                (
+                    bytes.get(1..)?,
+                    Action::Continue((player as usize).try_into().ok()?),
+                )
+            }
+            ActionKind::DeclareSuit => {
+                let suit = *bytes.get(0)?;
+                (
+                    bytes.get(1..)?,
+                    Action::DeclareSuit((suit as usize).try_into().ok()?),
+                )
+            }
+            ActionKind::ShowPoints => {
+                let cards = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
+                (
+                    bytes.get(2..)?,
+                    Action::ShowPoints(cards_from_bitmap(cards)),
+                )
+            }
+            ActionKind::Pass => {
+                let cards = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
+                (bytes.get(2..)?, Action::Pass(cards_from_bitmap(cards)))
+            }
+            ActionKind::Play => {
+                let card = *bytes.get(0)?;
+                (bytes.get(1..)?, Action::Play(card as usize))
+            }
+        })
+    }
 }

@@ -75,6 +75,7 @@ export type Phase = {
     },
 }
 export type GameInfo = {
+    "player_names": [string, string, string, string],
     "first_bidder": Player,
     "current_player": Player,
     "phase": Phase,
@@ -84,11 +85,16 @@ export type GameInfo = {
     ]
 }
 
+export function playerToIndex(player: Player): number {
+    return player.charCodeAt(0) - "A".charCodeAt(0)
+}
+
+
 export const toCard = ([suit, rank]: [Suit, Rank]): Card => {
     return { rank, suit };
 }
 
-export type FullState = {"seed": number[], "actions": unknown[]};
+export type FullState = {"seed": number[], "actions": unknown[], "player_names": [string, string, string, string]};
 
 const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : "";
 
@@ -101,7 +107,6 @@ export class Client {
     }
 
     async act(game: string, player: Player, action: unknown) {
-        console.log("Acting", action);
         const result = await fetch(`${baseUrl}/game/${game}/${player}/act`, {
             mode: "cors",
             method: "POST",
@@ -112,7 +117,6 @@ export class Client {
     }
 
     async startGame(game: string) {
-        console.log("Creating game", game);
         const result = await fetch(`${baseUrl}/game/${game}`, { mode: "cors", method: "POST" });
         return await result.text()
     }

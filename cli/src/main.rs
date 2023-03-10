@@ -1,5 +1,5 @@
 use pinochle::ai::Bot;
-use pinochle::{Action, Game, GameInfo, Phase};
+use pinochle::{Action, Game, Phase};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -19,8 +19,7 @@ fn main() {
     let mut bot: Option<Bot> = None;
 
     for action in &actions {
-        let info: GameInfo = (&game).into();
-        if let Phase::Play(playing_phase) = info.phase {
+        if let Phase::Play(playing_phase) = game.phase() {
             if bot.is_none() {
                 bot = Some(Bot::new(
                     bot_player,
@@ -44,7 +43,6 @@ fn main() {
         game.act(action.clone()).unwrap();
     }
     let chosen_card = &bot.as_ref().unwrap().get_move();
-    dbg!(chosen_card);
     let action = Action::Play(
         game.player_hand(bot_player)
             .iter()

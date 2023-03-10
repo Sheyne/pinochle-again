@@ -1,7 +1,8 @@
 use actix_cors::Cors;
 use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
+use base64::{engine::general_purpose::STANDARD, Engine};
 use pinochle::ai::Bot;
-use pinochle::{Action, Error, Game, GameInfo, Phase, Player};
+use pinochle::{Action, Error, Game, Phase, Player};
 use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -9,6 +10,7 @@ use std::sync::Mutex;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct GameState {
+    player_names: [String; 4],
     seed: [u8; 32],
     actions: Vec<Action>,
 }
@@ -16,6 +18,12 @@ struct GameState {
 impl GameState {
     fn random() -> Self {
         Self {
+            player_names: [
+                "A".to_owned(),
+                "B".to_owned(),
+                "C".to_owned(),
+                "D".to_owned(),
+            ],
             seed: thread_rng().gen(),
             actions: Default::default(),
         }
@@ -27,6 +35,89 @@ impl GameState {
             game.act(action.clone()).unwrap();
         }
         game
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut actions = vec![0];
+        actions.extend(self.player_names[0].as_bytes());
+        actions.push(0);
+        actions.extend(self.player_names[1].as_bytes());
+        actions.push(0);
+        actions.extend(self.player_names[2].as_bytes());
+        actions.push(0);
+        actions.extend(self.player_names[3].as_bytes());
+        actions.push(0);
+        actions.extend(self.seed);
+        for action in &self.actions {
+            action.encode(&mut actions);
+        }
+        actions
+    }
+
+    fn from_bytes(mut bytes: &[u8]) -> Option<Self> {
+        fn get_str(bytes: &[u8]) -> Option<(&str, &[u8])> {
+            let idx = bytes.iter().position(|x| *x == 0)?;
+            Some((
+                std::str::from_utf8(&bytes[..idx]).ok()?,
+                &bytes[(idx + 1)..],
+            ))
+        }
+        let _version = bytes[0];
+        bytes = &bytes[1..];
+
+        let (a, b, c, d);
+        (a, bytes) = get_str(bytes)?;
+        (b, bytes) = get_str(bytes)?;
+        (c, bytes) = get_str(bytes)?;
+        (d, bytes) = get_str(bytes)?;
+
+        let seed = bytes.get(0..32)?.try_into().ok()?;
+        bytes = &bytes[32..];
+        let mut actions = vec![];
+        let mut game = Game::new(StdRng::from_seed(seed));
+        while bytes.len() > 0 {
+            let (new_bytes, action) = Action::decode(bytes, game.phase())?;
+            actions.push(action.clone());
+            game.act(action).ok()?;
+            bytes = new_bytes;
+        }
+        Some(Self {
+            player_names: [
+                if a.len() == 0 { "A" } else { a }.to_owned(),
+                if b.len() == 0 { "B" } else { b }.to_owned(),
+                if c.len() == 0 { "C" } else { c }.to_owned(),
+                if d.len() == 0 { "D" } else { d }.to_owned(),
+            ],
+            actions,
+            seed,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GameInfo {
+    player_names: [String; 4],
+    first_bidder: Player,
+    current_player: Player,
+    phase: Phase,
+    scores: [i32; 2],
+}
+
+impl GameInfo {
+    fn from_game<R: Rng>(player_names: &[String; 4], game: &Game<R>) -> Self {
+        GameInfo {
+            player_names: player_names.clone(),
+            first_bidder: game.first_bidder(),
+            current_player: game.current_player(),
+            phase: game.phase().clone(),
+            scores: game.scores(),
+        }
+    }
+}
+
+impl<R: Rng> From<&Game<R>> for GameInfo {
+    fn from(value: &Game<R>) -> Self {
+        Self::from_game(&Default::default(), value)
     }
 }
 
@@ -46,7 +137,7 @@ async fn get_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Re
     let games = data.games.lock().unwrap();
     let name = game.into_inner();
     if let Some(game) = games.get(&name) {
-        let info: GameInfo = (&game.game()).into();
+        let info = GameInfo::from_game(&game.player_names, &game.game());
         HttpResponse::Ok().json(&info)
     } else {
         HttpResponse::NotFound().body("")
@@ -57,10 +148,41 @@ async fn get_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Re
 async fn get_full_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
     let games = data.games.lock().unwrap();
     let name = game.into_inner();
+
     if let Some(game) = games.get(&name) {
         HttpResponse::Ok().json(game)
     } else {
         HttpResponse::NotFound().body("")
+    }
+}
+
+#[get("/game/{game}/base64")]
+async fn get_b64_game(game: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+    let games = data.games.lock().unwrap();
+    let name = game.into_inner();
+
+    if let Some(game) = games.get(&name) {
+        HttpResponse::Ok().body(STANDARD.encode(&game.to_bytes()))
+    } else {
+        HttpResponse::NotFound().body("")
+    }
+}
+
+#[put("/game/{game}/base64")]
+async fn create_with_b64(
+    game_name: web::Path<String>,
+    info: web::Bytes,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    if let Some(game) = STANDARD
+        .decode(info)
+        .ok()
+        .and_then(|bytes| GameState::from_bytes(&bytes))
+    {
+        create(game_name, game, data);
+        HttpResponse::Ok()
+    } else {
+        HttpResponse::NotAcceptable()
     }
 }
 
@@ -87,8 +209,7 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
         let mut bot: Option<Bot> = None;
 
         for action in &game_init.actions {
-            let info: GameInfo = (&game).into();
-            if let Phase::Play(playing_phase) = info.phase {
+            if let Phase::Play(playing_phase) = game.phase() {
                 if bot.is_none() {
                     bot = Some(Bot::new(
                         bot_player,
@@ -209,6 +330,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_game)
             .service(get_games)
             .service(get_hand)
+            .service(get_b64_game)
+            .service(create_with_b64)
             .service(create_without)
             .service(trigger_bot)
             .service(create_with)

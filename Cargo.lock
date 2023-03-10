@@ -844,6 +844,7 @@ dependencies = [
  "actix-cors",
  "actix-files",
  "actix-web",
+ "base64",
  "enum-iterator",
  "itertools",
  "ordered-float",

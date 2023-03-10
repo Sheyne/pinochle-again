@@ -1,6 +1,6 @@
 import './App.css';
 import { useState, useRef, useEffect } from "react"
-import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState } from "./model";
+import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState, playerToIndex } from "./model";
 import Controls from "./Controls";
 import Hand from "./Hand"
 import Rules from "./Rules";
@@ -17,8 +17,10 @@ const trumpSymbols = {
 function App() {
     const [pendingSeed, setPendingSeed] = useState<string | undefined>();
     const [pendingActions, setPendingActions] = useState<string | undefined>();
+    const [pendingPlayerNames, setPendingPlayerNames] = useState<string | undefined>();
     const [lastServerSeed, setLastServerSeed] = useState<string | undefined>();
     const [lastServerActions, setLastServerActions] = useState<string | undefined>();
+    const [lastServerPlayerNames, setLastServerPlayerNames] = useState<string | undefined>();
     const [selectedCards, setSelectedCards] = useState(new Set<number>());
     const gameCreationElement = useRef<HTMLInputElement | null>(null);
     const [gameList, setGameList] = useState<string[] | undefined>(undefined);
@@ -65,6 +67,11 @@ function App() {
                 if (lastServerSeed != seedString || pendingSeed === undefined) {
                     setLastServerSeed(seedString);
                     setPendingSeed(seedString);
+                }
+                const playerNamesString = fullState.player_names.toString();
+                if (lastServerPlayerNames != playerNamesString || pendingPlayerNames === undefined) {
+                    setLastServerPlayerNames(playerNamesString);
+                    setPendingPlayerNames(playerNamesString);
                 }
             }
         }
@@ -123,8 +130,8 @@ function App() {
     return (
         <div className="App">
             {myPlayer ? (gameData ? (<div>
-                <div>I am: {myPlayer} on table: {gameName}</div>
-                <div>A+C have {gameData.scores[0]} points. B+D have {gameData.scores[1]} points.</div>
+                <div>I am: {gameData.player_names[playerToIndex(myPlayer)]} ({myPlayer}) on table: {gameName}</div>
+                <div>{gameData.player_names[0]}+{gameData.player_names[2]} have {gameData.scores[0]} points. {gameData.player_names[1]}+{gameData.player_names[3]} have {gameData.scores[1]} points.</div>
                 <Hand cards={myHand}
                     selected={selectedCards}
                     onSelectionChanged={selectCards}
@@ -156,6 +163,7 @@ function App() {
                 try {
                     if (gameName) {
                         client.setFullState(gameName, {
+                            player_names: (pendingPlayerNames?.split(",") ?? ["A", "B", "C", "D"]) as [string, string, string, string],
                             seed: JSON.parse(`[${pendingSeed}]`),
                             actions: JSON.parse(pendingActions ?? "")
                         }); refresh(gameName);
@@ -163,7 +171,9 @@ function App() {
                 } catch { }
                 setPendingActions(undefined);
                 setPendingSeed(undefined);
+                setPendingPlayerNames(undefined);
             }} >
+                <label>PlayerNames: <input type="text" style={{ width: "100%" }} value={pendingPlayerNames} onChange={e => {setPendingPlayerNames(e.target.value); }} /></label>
                 <label>Seed: <input type="text" style={{ width: "100%" }} value={pendingSeed} onChange={e => {setPendingSeed(e.target.value); }} /></label>
                 <label>Actions:<textarea rows={25} style={{ width: "100%" }} value={pendingActions} onChange={e => {setPendingActions(e.target.value); }}></textarea></label>
                 <input type="submit" value="Set" />

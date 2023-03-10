@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import "./Controls.css"
 import CardView from "./Card";
-import { GameInfo, Phase, Player, partner, toCard, nextPlayer, Suit, Rank, prevPlayer, Card } from "./model";
+import { GameInfo, Phase, Player, partner, toCard, Suit, Rank, prevPlayer, Card, playerToIndex } from "./model";
 
 function Controls(props: {
     gameInfo: GameInfo,
@@ -10,7 +10,7 @@ function Controls(props: {
     onAct?: (action: unknown) => void,
 }) {
     const amCurrentPlayer = props.gameInfo.current_player === props.player;
-    const waitingMessage = <div>Waiting for player {props.gameInfo.current_player}</div>
+    const waitingMessage = <div>Waiting for {props.gameInfo.player_names[playerToIndex(props.gameInfo.current_player)]}</div>
     const onAct = (action: unknown) => {
         if (props.onAct) {
             props.onAct(action)
@@ -30,16 +30,14 @@ function Controls(props: {
     }
 
     const displayPendingPoints = ([ac, bd]: [number, number]) => {
-        return <div>Base points A+C: {ac} B+D: {bd}</div>
+        return <div>Base points {props.gameInfo.player_names[0]}+{props.gameInfo.player_names[2]}: {ac} {props.gameInfo.player_names[1]}+{props.gameInfo.player_names[3]}: {bd}</div>
     }
 
     const displayRevealedCards = (reveals: [Suit, Rank][][]) => {
-        let player: Player = "A";
-        const cards = reveals.map(x => {
+        const cards = reveals.map((x, idx) => {
             const res = x.map(toCard).map(x => {
-                return (<CardView card={x} label={player} />);
+                return (<CardView card={x} label={props.gameInfo.player_names[idx]} />);
             });
-            player = nextPlayer(player);
             return (<div>{res}</div>);
         })
         return <div>{cards}</div>
@@ -105,10 +103,10 @@ function Controls(props: {
             let winningTeam = (lastBidWinner.codePointAt(0) as number - ("A".codePointAt(0) as number)) % 2
             let lastTrickPile = phase.piles[winningTeam].slice(-4).map(toCard)
             const displayTrickPile = (cards: Card[], label=true) => {
-                let playerLabel = phase.trick.first_player;
+                let playerIndex = playerToIndex(firstPlayer);
                 return cards.map(card => {
-                    const result = (<CardView card={card} focused={true} label={label ? playerLabel : undefined} />);
-                    playerLabel = nextPlayer(playerLabel);
+                    const result = (<CardView card={card} focused={true} label={label ? props.gameInfo.player_names[playerIndex] : undefined} />);
+                    playerIndex = (playerIndex + 1) % 4;
                     return result;
                 })
             }
