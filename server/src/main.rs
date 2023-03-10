@@ -10,7 +10,7 @@ use std::sync::Mutex;
 #[derive(Serialize, Deserialize, Debug)]
 struct GameState {
     seed: [u8; 32],
-    actions: Vec<(Player, Action)>,
+    actions: Vec<Action>,
 }
 
 impl GameState {
@@ -23,8 +23,8 @@ impl GameState {
 
     fn game(&self) -> Game<StdRng> {
         let mut game = Game::new(StdRng::from_seed(self.seed));
-        for (player, action) in &self.actions {
-            game.act(*player, action.clone()).unwrap();
+        for action in &self.actions {
+            game.act(action.clone()).unwrap();
         }
         game
     }
@@ -86,7 +86,7 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
 
         let mut bot: Option<Bot> = None;
 
-        for (current_player, action) in &game_init.actions {
+        for action in &game_init.actions {
             let info: GameInfo = (&game).into();
             if let Phase::Play(playing_phase) = info.phase {
                 if bot.is_none() {
@@ -98,10 +98,10 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
                 }
                 if let Action::Play(card) = action {
                     if let Some(bot) = &mut bot {
-                        let player_hand = game.player_hand(*current_player);
+                        let player_hand = game.player_hand(game.current_player());
 
                         bot.update(
-                            *current_player,
+                            game.current_player(),
                             player_hand[*card],
                             playing_phase.trump,
                             &playing_phase.trick.cards,
@@ -109,7 +109,7 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
                     }
                 }
             }
-            game.act(*current_player, action.clone()).unwrap();
+            game.act(action.clone()).unwrap();
         }
         let chosen_card = bot.unwrap().get_move();
 
@@ -119,9 +119,7 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
             .position(|x| *x == chosen_card)
             .unwrap();
 
-        game_init
-            .actions
-            .push((bot_player, Action::Play(chosen_action)));
+        game_init.actions.push(Action::Play(chosen_action));
     }
     HttpResponse::Ok().body("")
 }
@@ -134,8 +132,18 @@ async fn act(
 ) -> impl Responder {
     let mut games = data.games.lock().unwrap();
     let (name, player) = game.into_inner();
-    if let Some(game) = games.get_mut(&name) {
-        if let Some(err) = game.game().act(player, info.0.clone()).err() {
+    if let Some(game_state) = games.get_mut(&name) {
+        let action = info.0.clone();
+        let mut game = game_state.game();
+        if let Action::Continue(action_player) = action {
+            if action_player != player {
+                return HttpResponse::BadRequest().body("NotTheCurrentPlayer");
+            }
+        } else if player != game.current_player() {
+            return HttpResponse::BadRequest().body("NotTheCurrentPlayer");
+        }
+
+        if let Some(err) = game.act(action).err() {
             match err {
                 Error::PlayingNonExtantCard => {
                     HttpResponse::BadRequest().body("PlayingNonExtantCard")
@@ -152,7 +160,7 @@ async fn act(
                 Error::IncorrectAction => HttpResponse::BadRequest().body("IncorrectAction"),
             }
         } else {
-            game.actions.push((player, info.0));
+            game_state.actions.push(info.0);
             HttpResponse::Ok().body("")
         }
     } else {

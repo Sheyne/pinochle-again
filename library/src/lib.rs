@@ -132,13 +132,7 @@ impl<R: Rng> Game<R> {
         }
     }
 
-    pub fn act(&mut self, player: Player, action: Action) -> Result<(), Error> {
-        if let Phase::ReviewingRevealedCards { .. } = self.hand.phase {
-            self.hand.current_player = player;
-        }
-        if player != self.hand.current_player {
-            return Err(Error::NotTheCurrentPlayer);
-        }
+    pub fn act(&mut self, action: Action) -> Result<(), Error> {
         let result = self.hand.act(action)?;
         if let Some((a, b)) = result {
             self.scores[0] += a;
@@ -507,10 +501,9 @@ impl RoundState {
                     trump,
                     ..
                 },
-                Action::Continue,
+                Action::Continue(player),
             ) => {
-                reviews[self.current_player as usize] = true;
-                self.current_player = next_cycle(&self.current_player).unwrap();
+                reviews[player as usize] = true;
                 if reviews.iter().all(|x| *x) {
                     self.current_player = *bid_winner;
                     let playing_phase = PlayingPhase {
@@ -820,7 +813,7 @@ pub enum Error {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Action {
     Bid(i32),
-    Continue,
+    Continue(Player),
     DeclareSuit(Suit),
     ShowPoints(Vec<usize>),
     Pass(Vec<usize>),

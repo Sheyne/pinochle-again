@@ -402,7 +402,8 @@ impl Bot {
 
 #[test]
 fn try_bot() {
-    use pinochle::Trick;
+    use crate::Trick;
+    use Player::*;
     use Rank::*;
     use Suit::*;
 
@@ -425,19 +426,17 @@ fn try_bot() {
         Player::A,
         hand,
         PlayingPhase {
-            trump: Suit::Spades,
-            bid_winner: Player::A,
+            trump: Spades,
+            bid_winner: A,
             highest_bid: 0,
             extra_points: Default::default(),
             piles: Default::default(),
             trick: Trick {
-                first_player: Player::A,
+                first_player: A,
                 cards: Default::default(),
             },
         },
     );
 
-    dbg!(bot.get_move());
-
-    assert!(false);
+    assert_eq!(bot.get_move(), Card(Hearts, Ace));
 }
