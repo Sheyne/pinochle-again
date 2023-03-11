@@ -12,3 +12,4 @@ rand = "*"
 serde = { version = "*", features = ["derive"] }
 ordered-float = { version = "3.0", default-features = false }
 itertools = "*"
+bitvec = "*"

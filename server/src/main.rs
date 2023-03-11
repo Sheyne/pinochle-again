@@ -1,6 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
 use base64::{engine::general_purpose::STANDARD, Engine};
+use bitvec::prelude::*;
 use pinochle::ai::Bot;
 use pinochle::{Action, Error, Game, Phase, Player};
 use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
@@ -38,23 +39,26 @@ impl GameState {
     }
 
     fn to_bytes(&self) -> Vec<u8> {
-        let mut actions = vec![0];
-        actions.extend(self.player_names[0].as_bytes());
-        actions.push(0);
-        actions.extend(self.player_names[1].as_bytes());
-        actions.push(0);
-        actions.extend(self.player_names[2].as_bytes());
-        actions.push(0);
-        actions.extend(self.player_names[3].as_bytes());
-        actions.push(0);
-        actions.extend(self.seed);
+        let mut actions = bitvec![u8, Lsb0; 0; 8];
+        actions.extend_from_bitslice(self.player_names[0].as_bits::<Lsb0>());
+        actions.extend_from_bitslice(bits!(0; 8));
+        actions.extend_from_bitslice(self.player_names[1].as_bits::<Lsb0>());
+        actions.extend_from_bitslice(bits!(0; 8));
+        actions.extend_from_bitslice(self.player_names[2].as_bits::<Lsb0>());
+        actions.extend_from_bitslice(bits!(0; 8));
+        actions.extend_from_bitslice(self.player_names[3].as_bits::<Lsb0>());
+        actions.extend_from_bitslice(bits!(0; 8));
+        actions.extend_from_bitslice(self.seed.as_bits::<Lsb0>());
+        actions.extend_from_bitslice((self.actions.len() as u32).to_le_bytes().as_bits::<Lsb0>());
+        let mut game = Game::new(StdRng::from_seed(self.seed));
         for action in &self.actions {
-            action.encode(&mut actions);
+            action.encode(&mut actions, &game);
+            game.act(action.clone()).unwrap();
         }
-        actions
+        actions.into_vec()
     }
 
-    fn from_bytes(mut bytes: &[u8]) -> Option<Self> {
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
         fn get_str(bytes: &[u8]) -> Option<(&str, &[u8])> {
             let idx = bytes.iter().position(|x| *x == 0)?;
             Some((
@@ -63,23 +67,30 @@ impl GameState {
             ))
         }
         let _version = bytes[0];
-        bytes = &bytes[1..];
+        let bytes = &bytes[1..];
 
-        let (a, b, c, d);
-        (a, bytes) = get_str(bytes)?;
-        (b, bytes) = get_str(bytes)?;
-        (c, bytes) = get_str(bytes)?;
-        (d, bytes) = get_str(bytes)?;
+        let (a, bytes) = get_str(bytes)?;
+        let (b, bytes) = get_str(bytes)?;
+        let (c, bytes) = get_str(bytes)?;
+        let (d, bytes) = get_str(bytes)?;
 
         let seed = bytes.get(0..32)?.try_into().ok()?;
-        bytes = &bytes[32..];
+        let bytes = &bytes[32..];
+        let length = bytes.get(0..4)?;
+        let length = u32::from_le_bytes(length.try_into().ok()?);
+        let bytes = &bytes[4..];
         let mut actions = vec![];
         let mut game = Game::new(StdRng::from_seed(seed));
-        while bytes.len() > 0 {
-            let (new_bytes, action) = Action::decode(bytes, game.phase())?;
+        let mut bits = bytes.as_bits::<Lsb0>();
+        while actions.len() < length as usize {
+            let (new_bits, action) = Action::decode(bits, &game)?;
             actions.push(action.clone());
             game.act(action).ok()?;
-            bytes = new_bytes;
+            if let Some(new_bits) = new_bits {
+                bits = new_bits;
+            } else {
+                break;
+            }
         }
         Some(Self {
             player_names: [
@@ -162,7 +173,7 @@ async fn get_b64_game(game: web::Path<String>, data: web::Data<AppState>) -> imp
     let name = game.into_inner();
 
     if let Some(game) = games.get(&name) {
-        HttpResponse::Ok().body(STANDARD.encode(&game.to_bytes()))
+        HttpResponse::Ok().body(STANDARD.encode(game.to_bytes()))
     } else {
         HttpResponse::NotFound().body("")
     }
@@ -243,6 +254,27 @@ async fn trigger_bot(game: web::Path<String>, data: web::Data<AppState>) -> impl
         game_init.actions.push(Action::Play(chosen_action));
     }
     HttpResponse::Ok().body("")
+}
+
+#[put("/game/{game}/{player}/name")]
+async fn set_name(
+    game: web::Path<(String, Player)>,
+    info: web::Bytes,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let mut games = data.games.lock().unwrap();
+    let (name, player) = game.into_inner();
+    if let Some(game_state) = games.get_mut(&name) {
+        match String::from_utf8(info.into()) {
+            Ok(name) => {
+                game_state.player_names[player as usize] = name;
+                HttpResponse::Ok().body("")
+            }
+            Err(err) => HttpResponse::NotAcceptable().body(format!("{err}")),
+        }
+    } else {
+        HttpResponse::NotFound().body("")
+    }
 }
 
 #[post("/game/{game}/{player}/act")]
@@ -326,6 +358,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(shared.clone())
             .service(act)
+            .service(set_name)
             .service(get_full_game)
             .service(get_game)
             .service(get_games)

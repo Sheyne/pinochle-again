@@ -18,3 +18,4 @@ itertools = "*"
 ordered-float = { version = "3.0", default-features = false }
 pinochle = { path = "../library" }
 base64 = "*"
+bitvec = "*"

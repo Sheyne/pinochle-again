@@ -15,6 +15,7 @@ const trumpSymbols = {
 }
 
 function App() {
+    const [pendingPlayerName, setPendingPlayerName] = useState<string | undefined>();
     const [pendingSeed, setPendingSeed] = useState<string | undefined>();
     const [pendingActions, setPendingActions] = useState<string | undefined>();
     const [pendingPlayerNames, setPendingPlayerNames] = useState<string | undefined>();
@@ -77,6 +78,13 @@ function App() {
         }
     }
 
+    const assignPlayerName = () => {
+        if (gameName && myPlayer && pendingPlayerName) {
+            client.setName(gameName, myPlayer, pendingPlayerName);
+            setPendingPlayerName(undefined);
+        }
+    }
+
     useEffect(() => {
         const interval = setInterval(refresh, 300);
         return () => clearInterval(interval);
@@ -130,7 +138,12 @@ function App() {
     return (
         <div className="App">
             {myPlayer ? (gameData ? (<div>
-                <div>I am: {gameData.player_names[playerToIndex(myPlayer)]} ({myPlayer}) on table: {gameName}</div>
+                <div><form onSubmit={e=> {e.preventDefault(); assignPlayerName()}}><label onClick={e => setPendingPlayerName(gameData.player_names[playerToIndex(myPlayer)])}>I am:
+                    {pendingPlayerName !== undefined ? <input type="text" 
+                        value={pendingPlayerName}
+                        onChange={e => setPendingPlayerName(e.target.value)}
+                        onBlur={_ => assignPlayerName() } /> : ` ${gameData.player_names[playerToIndex(myPlayer)]} `}
+                    ({myPlayer})</label></form> on table: {gameName}</div>
                 <div>{gameData.player_names[0]}+{gameData.player_names[2]} have {gameData.scores[0]} points. {gameData.player_names[1]}+{gameData.player_names[3]} have {gameData.scores[1]} points.</div>
                 <Hand cards={myHand}
                     selected={selectedCards}
@@ -173,9 +186,9 @@ function App() {
                 setPendingSeed(undefined);
                 setPendingPlayerNames(undefined);
             }} >
-                <label>PlayerNames: <input type="text" style={{ width: "100%" }} value={pendingPlayerNames} onChange={e => {setPendingPlayerNames(e.target.value); }} /></label>
-                <label>Seed: <input type="text" style={{ width: "100%" }} value={pendingSeed} onChange={e => {setPendingSeed(e.target.value); }} /></label>
-                <label>Actions:<textarea rows={25} style={{ width: "100%" }} value={pendingActions} onChange={e => {setPendingActions(e.target.value); }}></textarea></label>
+                <label>PlayerNames: <input type="text" style={{ width: "100%" }} value={pendingPlayerNames} onChange={e => { setPendingPlayerNames(e.target.value); }} /></label>
+                <label>Seed: <input type="text" style={{ width: "100%" }} value={pendingSeed} onChange={e => { setPendingSeed(e.target.value); }} /></label>
+                <label>Actions:<textarea rows={25} style={{ width: "100%" }} value={pendingActions} onChange={e => { setPendingActions(e.target.value); }}></textarea></label>
                 <input type="submit" value="Set" />
             </form> : ""}
         </div>

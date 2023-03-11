@@ -1,3 +1,4 @@
+use bitvec::prelude::*;
 use enum_iterator::{all, cardinality, next_cycle, previous_cycle, Sequence};
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
@@ -89,7 +90,6 @@ impl TryFrom<usize> for Suit {
         }
     }
 }
-
 
 #[derive(
     Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Sequence, Serialize, Deserialize, Hash,
@@ -728,20 +728,6 @@ pub enum Phase {
     Play(PlayingPhase),
 }
 
-impl Phase {
-    pub fn action(&self) -> ActionKind {
-        match self {
-            Phase::Bidding { .. } => ActionKind::Bid,
-            Phase::DeclareTrump { .. } => ActionKind::DeclareSuit,
-            Phase::PassingTo { .. } => ActionKind::Pass,
-            Phase::PassingBack { .. } => ActionKind::Pass,
-            Phase::RevealingCards { .. } => ActionKind::ShowPoints,
-            Phase::ReviewingRevealedCards { .. } => ActionKind::Continue,
-            Phase::Play(..) => ActionKind::Play,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayingPhase {
     pub trump: Suit,
@@ -841,24 +827,16 @@ pub enum Action {
     Play(usize),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum ActionKind {
-    Bid,
-    Continue,
-    DeclareSuit,
-    ShowPoints,
-    Pass,
-    Play,
-}
-
 impl Action {
-    pub fn encode(&self, out: &mut Vec<u8>) {
-        fn cards_to_bitmap(cards: &[usize], out: &mut Vec<u8>) {
-            let mut map = 0u16;
+    pub fn encode<'a, 'b, R: Rng>(&self, out: &'a mut BitVec<u8, Lsb0>, game: &'b Game<R>) {
+        fn cards_to_bitmap(cards: &[usize], n: usize, out: &mut BitVec<u8>) {
+            let res = bits![mut 0; 16];
+            let res = &mut res[..n];
             for card in cards {
-                map |= 1 << card;
+                res.set(*card, true);
             }
-            out.extend(map.to_le_bytes())
+
+            out.extend_from_bitslice(res);
         }
 
         match self {
@@ -866,37 +844,60 @@ impl Action {
                 let amt = if *amt == 0 {
                     0
                 } else {
-                    ((amt - 250) / 25) as u16 + 1
+                    ((amt - 250) / 25) as u8 + 1
                 };
-                let bytes = amt.to_le_bytes();
-                out.extend(bytes)
+                out.extend_from_bitslice(amt.view_bits::<Lsb0>())
             }
-            Action::Continue(player) => out.push(*player as u8),
-            Action::DeclareSuit(suit) => out.push(*suit as u8),
-            Action::ShowPoints(cards) => cards_to_bitmap(cards, out),
-            Action::Pass(cards) => cards_to_bitmap(cards, out),
-            Action::Play(card) => out.push(*card as u8),
+            Action::Continue(player) => {
+                out.extend_from_bitslice(&(*player as u8).view_bits::<Lsb0>()[..2])
+            }
+            Action::DeclareSuit(suit) => {
+                out.extend_from_bitslice(&(*suit as u8).view_bits::<Lsb0>()[..2])
+            }
+            Action::ShowPoints(cards) => cards_to_bitmap(cards, 12, out),
+            Action::Pass(cards) => cards_to_bitmap(
+                cards,
+                if matches!(game.hand.phase, Phase::PassingTo { .. }) {
+                    12
+                } else {
+                    16
+                },
+                out,
+            ),
+            Action::Play(card) => {
+                let num_cards = game.hand.hands[game.hand.current_player as usize].len() as u8;
+                let needed_bits = 8 - (num_cards - 1).leading_zeros();
+                out.extend_from_bitslice(&(*card as u8).view_bits::<Lsb0>()[..needed_bits as usize])
+            }
         }
     }
 
-    pub fn decode<'a, 'b>(bytes: &'a [u8], phase: &'b Phase) -> Option<(&'a [u8], Self)> {
-        fn cards_from_bitmap(cards: u16) -> Vec<usize> {
-            (0..16)
-                .flat_map(|idx| {
-                    if (cards & (1 << idx)) != 0 {
-                        Some(idx)
-                    } else {
-                        None
-                    }
-                })
-                .collect()
+    pub fn decode<'a, 'b, R: Rng, T: BitStore>(
+        bits: &'a BitSlice<T, Lsb0>,
+        game: &'b Game<R>,
+    ) -> Option<(Option<&'a BitSlice<T, Lsb0>>, Self)> {
+        fn cards_from_bitmap<T: BitStore>(cards: &BitSlice<T, Lsb0>) -> Vec<usize> {
+            cards.iter_ones().collect()
         }
 
-        Some(match phase.action() {
-            ActionKind::Bid => {
-                let bid = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
+        fn split_at<'a, T: BitStore>(
+            bits: &'a BitSlice<T, Lsb0>,
+            mid: usize,
+        ) -> (&'a BitSlice<T, Lsb0>, Option<&'a BitSlice<T, Lsb0>>) {
+            if mid == bits.len() {
+                (bits, None)
+            } else {
+                let (a, b) = bits.split_at(mid);
+                (a, Some(b))
+            }
+        }
+
+        Some(match game.hand.phase {
+            Phase::Bidding { .. } => {
+                let (bid, rest) = split_at(bits, 8);
+                let bid = bid.load_le::<u8>();
                 (
-                    bytes.get(2..)?,
+                    rest,
                     Action::Bid(if bid == 0 {
                         0
                     } else {
@@ -904,34 +905,44 @@ impl Action {
                     }),
                 )
             }
-            ActionKind::Continue => {
-                let player = *bytes.get(0)?;
+            Phase::ReviewingRevealedCards { .. } => {
+                let (player, rest) = split_at(bits, 2);
                 (
-                    bytes.get(1..)?,
-                    Action::Continue((player as usize).try_into().ok()?),
+                    rest,
+                    Action::Continue((player.load_le::<u8>() as usize).try_into().ok()?),
                 )
             }
-            ActionKind::DeclareSuit => {
-                let suit = *bytes.get(0)?;
+            Phase::DeclareTrump { .. } => {
+                let (suit, rest) = split_at(bits, 2);
                 (
-                    bytes.get(1..)?,
-                    Action::DeclareSuit((suit as usize).try_into().ok()?),
+                    rest,
+                    Action::DeclareSuit((suit.load_le::<u8>() as usize).try_into().ok()?),
                 )
             }
-            ActionKind::ShowPoints => {
-                let cards = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
+            Phase::RevealingCards { .. } => {
+                let (cards, rest) = split_at(bits, 12);
+                (rest, Action::ShowPoints(cards_from_bitmap(cards)))
+            }
+            Phase::PassingTo { .. } => {
+                let (cards, rest) = split_at(bits, 12);
+                (rest, Action::Pass(cards_from_bitmap(cards)))
+            }
+            Phase::PassingBack { .. } => {
+                let (cards, rest) = split_at(bits, 16);
+                (rest, Action::Pass(cards_from_bitmap(cards)))
+            }
+            Phase::Play(..) => {
+                let num_cards = game.hand.hands[game.hand.current_player as usize].len() as u8;
+                let needed_bits = 8 - (num_cards - 1).leading_zeros();
+                let (card, rest) = split_at(bits, needed_bits as usize);
                 (
-                    bytes.get(2..)?,
-                    Action::ShowPoints(cards_from_bitmap(cards)),
+                    rest,
+                    Action::Play(if needed_bits == 0 {
+                        0
+                    } else {
+                        card.load_le::<u8>() as usize
+                    }),
                 )
-            }
-            ActionKind::Pass => {
-                let cards = u16::from_le_bytes(bytes.get(0..2)?.try_into().ok()?);
-                (bytes.get(2..)?, Action::Pass(cards_from_bitmap(cards)))
-            }
-            ActionKind::Play => {
-                let card = *bytes.get(0)?;
-                (bytes.get(1..)?, Action::Play(card as usize))
             }
         })
     }

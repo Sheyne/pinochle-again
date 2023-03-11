@@ -116,6 +116,15 @@ export class Client {
         return await result.text()
     }
 
+    async setName(game: string, player: Player, name: string) {
+        const result = await fetch(`${baseUrl}/game/${game}/${player}/name`, {
+            mode: "cors",
+            method: "PUT",
+            body: name,
+        });
+        return await result.text()
+    }
+
     async startGame(game: string) {
         const result = await fetch(`${baseUrl}/game/${game}`, { mode: "cors", method: "POST" });
         return await result.text()

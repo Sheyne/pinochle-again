@@ -83,7 +83,7 @@ function Controls(props: {
             return (<div>
                 {displayPendingPoints(phase.extra_points)}
                 {displayRevealedCards(phase.reveals)}
-                <input type="button" value="Confirm" onClick={() => onAct("Continue")} />
+                <input type="button" value="Confirm" onClick={() => onAct({"Continue": props.player})} />
             </div>)
         },
         Play: (phase: Phase['Play']) => {
