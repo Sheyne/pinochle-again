@@ -368,6 +368,7 @@ async fn main() -> std::io::Result<()> {
             .service(create_without)
             .service(trigger_bot)
             .service(create_with)
+            .service(actix_files::Files::new("/game/{name}/{player}", "./www/build").index_file("index.html"))
             .service(actix_files::Files::new("/", "./www/build").index_file("index.html"))
     })
     .bind(("0.0.0.0", 8080))?

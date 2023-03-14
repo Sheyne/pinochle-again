@@ -14,15 +14,15 @@ export default function DevTools(props: {
     const [lastActions, setLastActions] = useState<string>(props.actions);
     const [lastPlayerNames, setLastPlayerNames] = useState<string>(props.playerNames);
 
-    if (lastSeed != props.seed) {
+    if (lastSeed !== props.seed) {
         setLastSeed(props.seed);
         setPendingSeed(undefined);
     }
-    if (lastActions != props.actions) {
+    if (lastActions !== props.actions) {
         setLastActions(props.actions);
         setPendingActions(undefined);
     }
-    if (lastPlayerNames != props.playerNames) {
+    if (lastPlayerNames !== props.playerNames) {
         setLastPlayerNames(props.playerNames);
         setPendingPlayerNames(undefined);
     }

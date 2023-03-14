@@ -1,0 +1,7 @@
+.unselected-game {
+    font-weight: normal;
+}
+
+.selected-game {
+    font-weight: bold;
+}
