@@ -2,8 +2,10 @@ import './App.css';
 import { useState, useRef, useEffect } from "react"
 import { Card, GameInfo, Client, selectionMax, Phase, Player, FullState, playerToIndex } from "./model";
 import Controls from "./Controls";
+import DevTools from "./DevTools";
 import Hand from "./Hand"
 import Rules from "./Rules";
+import PlayerName from './PlayerName';
 
 const client = new Client();
 
@@ -15,13 +17,7 @@ const trumpSymbols = {
 }
 
 function App() {
-    const [pendingPlayerName, setPendingPlayerName] = useState<string | undefined>();
-    const [pendingSeed, setPendingSeed] = useState<string | undefined>();
-    const [pendingActions, setPendingActions] = useState<string | undefined>();
-    const [pendingPlayerNames, setPendingPlayerNames] = useState<string | undefined>();
-    const [lastServerSeed, setLastServerSeed] = useState<string | undefined>();
-    const [lastServerActions, setLastServerActions] = useState<string | undefined>();
-    const [lastServerPlayerNames, setLastServerPlayerNames] = useState<string | undefined>();
+    const [serverFullState, setServerFullState] = useState<FullState | undefined>();
     const [selectedCards, setSelectedCards] = useState(new Set<number>());
     const gameCreationElement = useRef<HTMLInputElement | null>(null);
     const [gameList, setGameList] = useState<string[] | undefined>(undefined);
@@ -35,6 +31,19 @@ function App() {
         (async () => {
             setGameList(await client.getGames());
         })()
+    }
+
+    const setFullState = async (newPlayerNames: string, newSeed: string, newActions: string) => {
+        try {
+            if (gameName) {
+                await client.setFullState(gameName, {
+                    player_names: (newPlayerNames?.split(",") ?? ["A", "B", "C", "D"]) as [string, string, string, string],
+                    seed: JSON.parse(`[${newSeed}]`),
+                    actions: JSON.parse(newActions ?? "")
+                });
+                refresh(gameName);
+            }
+        } catch { }
     }
 
     useEffect(() => {
@@ -58,30 +67,14 @@ function App() {
                 setMyHand(hand);
             }
             if (trackFullState) {
-                const fullState = await client.getFullState(game);
-                const actionsString = JSON.stringify(fullState.actions);
-                if (actionsString !== lastServerActions || pendingActions === undefined) {
-                    setLastServerActions(actionsString);
-                    setPendingActions(actionsString);
-                }
-                const seedString = fullState.seed.toString();
-                if (lastServerSeed != seedString || pendingSeed === undefined) {
-                    setLastServerSeed(seedString);
-                    setPendingSeed(seedString);
-                }
-                const playerNamesString = fullState.player_names.toString();
-                if (lastServerPlayerNames != playerNamesString || pendingPlayerNames === undefined) {
-                    setLastServerPlayerNames(playerNamesString);
-                    setPendingPlayerNames(playerNamesString);
-                }
+                setServerFullState(await client.getFullState(game));
             }
         }
     }
 
-    const assignPlayerName = () => {
-        if (gameName && myPlayer && pendingPlayerName) {
-            client.setName(gameName, myPlayer, pendingPlayerName);
-            setPendingPlayerName(undefined);
+    const assignPlayerName = (playerName: string) => {
+        if (gameName && myPlayer) {
+            client.setName(gameName, myPlayer, playerName);
         }
     }
 
@@ -138,12 +131,9 @@ function App() {
     return (
         <div className="App">
             {myPlayer ? (gameData ? (<div>
-                <div><form onSubmit={e=> {e.preventDefault(); assignPlayerName()}}><label onClick={e => setPendingPlayerName(gameData.player_names[playerToIndex(myPlayer)])}>I am:
-                    {pendingPlayerName !== undefined ? <input type="text" 
-                        value={pendingPlayerName}
-                        onChange={e => setPendingPlayerName(e.target.value)}
-                        onBlur={_ => assignPlayerName() } /> : ` ${gameData.player_names[playerToIndex(myPlayer)]} `}
-                    ({myPlayer})</label></form> on table: {gameName}</div>
+                <div>
+                    <PlayerName assignPlayerName={assignPlayerName} player={myPlayer} playerName={gameData.player_names[playerToIndex(myPlayer)]}/>
+                     on table: {gameName}</div>
                 <div>{gameData.player_names[0]}+{gameData.player_names[2]} have {gameData.scores[0]} points. {gameData.player_names[1]}+{gameData.player_names[3]} have {gameData.scores[1]} points.</div>
                 <Hand cards={myHand}
                     selected={selectedCards}
@@ -170,27 +160,13 @@ function App() {
             </div>}
 
             <Rules />
-
-            {trackFullState ? <form style={{ backgroundColor: "#ddd", padding: "1em" }} onSubmit={(e) => {
-                e.preventDefault();
-                try {
-                    if (gameName) {
-                        client.setFullState(gameName, {
-                            player_names: (pendingPlayerNames?.split(",") ?? ["A", "B", "C", "D"]) as [string, string, string, string],
-                            seed: JSON.parse(`[${pendingSeed}]`),
-                            actions: JSON.parse(pendingActions ?? "")
-                        }); refresh(gameName);
-                    }
-                } catch { }
-                setPendingActions(undefined);
-                setPendingSeed(undefined);
-                setPendingPlayerNames(undefined);
-            }} >
-                <label>PlayerNames: <input type="text" style={{ width: "100%" }} value={pendingPlayerNames} onChange={e => { setPendingPlayerNames(e.target.value); }} /></label>
-                <label>Seed: <input type="text" style={{ width: "100%" }} value={pendingSeed} onChange={e => { setPendingSeed(e.target.value); }} /></label>
-                <label>Actions:<textarea rows={25} style={{ width: "100%" }} value={pendingActions} onChange={e => { setPendingActions(e.target.value); }}></textarea></label>
-                <input type="submit" value="Set" />
-            </form> : ""}
+            {
+                trackFullState && serverFullState
+                    ? <DevTools setFullState={setFullState}
+                        actions={JSON.stringify(serverFullState.actions)}
+                        playerNames={serverFullState.player_names.toString()}
+                        seed={serverFullState.seed.toString()} />
+                    : ""}
         </div>
     );
 }
