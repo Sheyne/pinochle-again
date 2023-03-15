@@ -48,7 +48,7 @@ export type Phase = {
         trump: Suit,
     },
     "RevealingCards": {
-        reveals: ([Suit, Rank][]|null)[],
+        reveals: ([Suit, Rank][] | null)[],
         extra_points: [number, number],
         bid_winner: Player,
         highest_bid: number,
@@ -94,9 +94,9 @@ export const toCard = ([suit, rank]: [Suit, Rank]): Card => {
     return { rank, suit };
 }
 
-export type FullState = {"seed": number[], "actions": unknown[], "player_names": [string, string, string, string]};
+export type FullState = { "seed": number[], "actions": unknown[], "player_names": [string, string, string, string] };
 
-const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : "";
+const baseUrl = window.location.port === "3000" ? "http://localhost:8080" : window.location.port === "3001" ? "https://pinochle.sheyne.com" : "";
 
 export class Client {
     async getGames(): Promise<string[]> {
@@ -144,7 +144,7 @@ export class Client {
         return await full.json();
     }
     async setFullState(game: string, state: FullState) {
-         await fetch(`${baseUrl}/game/${game}`, {
+        await fetch(`${baseUrl}/game/${game}`, {
             mode: "cors",
             method: "PUT",
             body: JSON.stringify(state),
